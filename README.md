@@ -25,32 +25,46 @@ Certified by MCPHub https://mcphub.com/mcp-servers/ryaker/outlook-mcp
 ## Directory Structure
 
 ```
-/modular/
-├── index.js                 # Main entry point
-├── config.js                # Configuration settings
-├── auth/                    # Authentication modules
-│   ├── index.js             # Authentication exports
-│   ├── token-manager.js     # Token storage and refresh
-│   └── tools.js             # Auth-related tools
-├── calendar/                # Calendar functionality
-│   ├── index.js             # Calendar exports
-│   ├── list.js              # List events
-│   ├── create.js            # Create event
-│   ├── delete.js            # Delete event
-│   ├── cancel.js            # Cancel
-│   ├── accept.js            # Accept event
-│   ├── tentative.js         # Tentatively accept event
-│   ├── decline.js           # Decline event
-├── email/                   # Email functionality
-│   ├── index.js             # Email exports
-│   ├── list.js              # List emails
-│   ├── search.js            # Search emails
-│   ├── read.js              # Read email
-│   └── send.js              # Send email
-└── utils/                   # Utility functions
-    ├── graph-api.js         # Microsoft Graph API helper
-    ├── odata-helpers.js     # OData query building
-    └── mock-data.js         # Test mode data
+├── index.js                   # Main entry point
+├── config.js                  # Configuration settings
+├── .env.example               # Example environment config
+├── MCP-WORKFLOW-EXPLAINER.md  # Workflow and architecture explainer
+├── CHANGELOG.md               # Changelog for this fork
+├── README.md                  # Project documentation
+├── auth/
+│   ├── index.js               # Authentication exports
+│   ├── token-manager.js       # Token storage and refresh
+│   └── tools.js               # Auth-related tools
+├── calendar/
+│   ├── index.js               # Calendar exports
+│   ├── list.js                # List events
+│   ├── create.js              # Create event
+│   ├── delete.js              # Delete event
+│   ├── cancel.js              # Cancel
+│   ├── accept.js              # Accept event
+│   ├── tentative.js           # Tentatively accept event
+│   ├── decline.js             # Decline event
+├── email/
+│   ├── index.js               # Email exports
+│   ├── list.js                # List emails
+│   ├── search.js              # Search emails
+│   ├── read.js                # Read email
+│   └── send.js                # Send email
+├── folder/
+│   ├── index.js               # Folder exports
+│   ├── list.js                # List folders
+│   ├── create.js              # Create folder
+│   └── move.js                # Move emails
+├── rules/
+│   ├── index.js               # Rules exports
+│   ├── list.js                # List rules
+│   └── create.js              # Create rule
+├── utils/
+│   ├── graph-api.js           # Microsoft Graph API helper
+│   ├── odata-helpers.js       # OData query building
+│   ├── mock-data.js           # Test mode data
+│   ├── sanitize.js            # Input sanitization helpers
+│   └── sensitive-log.js       # Sensitive action logging/alerting
 ```
 
 ## Features
