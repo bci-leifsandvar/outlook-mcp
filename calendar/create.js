@@ -11,7 +11,34 @@ const { DEFAULT_TIMEZONE } = require('../config');
  * @returns {object} - MCP response
  */
 async function handleCreateEvent(args) {
-  const { subject, start, end, attendees, body } = args;
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  require('../config').ensureConfigSafe();
+  const { subject, start, end, attendees, body, confirm } = args;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE && !confirm) {
+    // Sanitize and check for suspicious input
+    const safeSubject = sanitizeText(subject);
+    const safeStart = sanitizeText(start?.dateTime || start);
+    const safeEnd = sanitizeText(end?.dateTime || end);
+    const safeAttendees = Array.isArray(attendees) ? attendees.map(sanitizeText).join(', ') : 'None';
+    if ([subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious)) {
+      return {
+        content: [{
+          type: "text",
+          text: "Suspicious input detected in event fields. Action blocked."
+        }],
+        requiresConfirmation: false
+      };
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Are you sure you want to create this event?\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}\n\nReply with confirm=true to proceed.`
+      }],
+      requiresConfirmation: true
+    };
+  }
 
   if (!subject || !start || !end) {
     return {

@@ -10,7 +10,30 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleAcceptEvent(args) {
-  const { eventId, comment } = args;
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  require('../config').ensureConfigSafe();
+  const { eventId, comment, confirm } = args;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE && !confirm) {
+    const safeEventId = sanitizeText(eventId);
+    if (isSuspicious(eventId)) {
+      return {
+        content: [{
+          type: "text",
+          text: "Suspicious input detected in event ID. Action blocked."
+        }],
+        requiresConfirmation: false
+      };
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Are you sure you want to accept the event with ID: ${safeEventId}?\n\nReply with confirm=true to proceed.`
+      }],
+      requiresConfirmation: true
+    };
+  }
 
   if (!eventId) {
     return {

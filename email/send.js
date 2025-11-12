@@ -11,7 +11,34 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleSendEmail(args) {
-  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true } = args;
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  require('../config').ensureConfigSafe();
+  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirm } = args;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE && !confirm) {
+    // Sanitize and check for suspicious input
+    const safeSubject = sanitizeText(subject);
+    const safeTo = sanitizeText(to);
+    const safeCc = sanitizeText(cc);
+    const safeBcc = sanitizeText(bcc);
+    if ([subject, to, cc, bcc].some(isSuspicious)) {
+      return {
+        content: [{
+          type: "text",
+          text: "Suspicious input detected in email fields. Action blocked."
+        }],
+        requiresConfirmation: false
+      };
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Are you sure you want to send this email?\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}\n\nReply with confirm=true to proceed.`
+      }],
+      requiresConfirmation: true
+    };
+  }
   
   // Validate required parameters
   if (!to) {

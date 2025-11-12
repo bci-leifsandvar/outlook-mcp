@@ -88,20 +88,16 @@ To use this MCP server you need to first register and configure an app in Azure 
 8. Click on "Register"
 9. From the Overview section of the app settings page, copy the "Application (client) ID" and enter it as the MS_CLIENT_ID in the .env file as well as the OUTLOOK_CLIENT_ID in the claude-config-sample.json file
 
+
 ### App Permissions
 
 1. From the app settings page in Azure Portal select the "API permissions" option under the Manage section
 2. Click on "Add a permission"
 3. Click on "Microsoft Graph"
 4. Select "Delegated permissions"
-5. Search for the following permissions and slect the checkbox next to each one
-    - offline_access
-    - User.Read
-    - Mail.Read
-    - Mail.Send
-    - Calendars.Read
-    - Calendars.ReadWrite
-    - Contacts.Read
+5. Search for and select only the permissions you need. The server supports:
+  - Mail.Read, Mail.ReadWrite, Mail.Send, User.Read, Calendars.Read, Calendars.ReadWrite, Contacts.Read
+  - (You can restrict further by setting the OUTLOOK_SCOPES environment variable)
 6. Click on "Add permissions"
 
 ### Client Secret
@@ -116,9 +112,21 @@ To use this MCP server you need to first register and configure an app in Azure 
 
 ## Configuration
 
+
 ### 1. Environment Variables
 
 Create a `.env` file in the project root by copying the example:
+#### Configurable OAuth Scopes
+
+You can restrict the Microsoft Graph API scopes requested by setting the `OUTLOOK_SCOPES` environment variable (comma-separated). Only the following scopes are allowed:
+
+  Mail.Read, Mail.ReadWrite, Mail.Send, User.Read, Calendars.Read, Calendars.ReadWrite, Contacts.Read
+
+Example:
+
+  OUTLOOK_SCOPES="Mail.Read,User.Read,Calendars.Read"
+
+If not set or if invalid scopes are provided, the server defaults to: `Mail.Read, User.Read, Calendars.Read`.
 
 ```bash
 cp .env.example .env

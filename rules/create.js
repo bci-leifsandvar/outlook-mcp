@@ -12,6 +12,8 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  require('../config').ensureConfigSafe();
   const {
     name,
     fromAddresses,
@@ -20,8 +22,33 @@ async function handleCreateRule(args) {
     moveToFolder,
     markAsRead,
     isEnabled = true,
-    sequence
+    sequence,
+    confirm
   } = args;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE && !confirm) {
+    const safeName = sanitizeText(name);
+    const safeFrom = sanitizeText(fromAddresses || 'Any');
+    const safeSubject = sanitizeText(containsSubject || 'Any');
+    const safeMoveTo = sanitizeText(moveToFolder || 'None');
+    if ([name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious)) {
+      return {
+        content: [{
+          type: "text",
+          text: "Suspicious input detected in rule fields. Action blocked."
+        }],
+        requiresConfirmation: false
+      };
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Are you sure you want to create this rule?\nName: ${safeName}\nFrom: ${safeFrom}\nSubject Contains: ${safeSubject}\nHas Attachments: ${hasAttachments ? 'Yes' : 'No'}\nMove To Folder: ${safeMoveTo}\nMark As Read: ${markAsRead ? 'Yes' : 'No'}\n\nReply with confirm=true to proceed.`
+      }],
+      requiresConfirmation: true
+    };
+  }
   
   // Add validation for sequence parameter
   if (sequence !== undefined && (isNaN(sequence) || sequence < 1)) {

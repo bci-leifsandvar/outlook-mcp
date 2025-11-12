@@ -11,9 +11,34 @@ const { getFolderIdByName } = require('../email/folder-utils');
  * @returns {object} - MCP response
  */
 async function handleMoveEmails(args) {
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  require('../config').ensureConfigSafe();
   const emailIds = args.emailIds || '';
   const targetFolder = args.targetFolder || '';
   const sourceFolder = args.sourceFolder || '';
+  const confirm = args.confirm;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE && !confirm) {
+    const safeTargetFolder = sanitizeText(targetFolder);
+    const safeEmailIds = sanitizeText(emailIds, 1000);
+    if (isSuspicious(targetFolder) || isSuspicious(emailIds)) {
+      return {
+        content: [{
+          type: "text",
+          text: "Suspicious input detected in folder or email IDs. Action blocked."
+        }],
+        requiresConfirmation: false
+      };
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Are you sure you want to move the following email IDs to folder '${safeTargetFolder}'?\n${safeEmailIds}\n\nReply with confirm=true to proceed.`
+      }],
+      requiresConfirmation: true
+    };
+  }
   
   if (!emailIds) {
     return {
