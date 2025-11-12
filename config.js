@@ -1,3 +1,15 @@
+// Production environment checks
+const isProd = process.env.NODE_ENV === 'production' || process.env.MCP_ENV === 'production';
+if (isProd) {
+  if (process.env.USE_TEST_MODE === 'true') {
+    console.error('SECURITY ERROR: Test mode must not be enabled in production!');
+    process.exit(1);
+  }
+  if (process.env.SECURE_PROMPT_MODE === 'false') {
+    console.error('SECURITY ERROR: SECURE_PROMPT_MODE must be enabled in production!');
+    process.exit(1);
+  }
+}
 /**
  * Configuration for Outlook MCP Server
  */
@@ -86,5 +98,5 @@ module.exports = {
   MAX_RESULT_COUNT: 50,
 
   // Timezone
-  DEFAULT_TIMEZONE: "Central European Standard Time",
+  DEFAULT_TIMEZONE: "Pacific Standard Time",
 };
