@@ -1,3 +1,5 @@
+## [Unreleased]
+- Changed default timezone from "Central European Standard Time" to "Pacific Standard Time" (PST)
 # Changelog for outlook-mcp (Fork)
 
 ## [Unreleased]
