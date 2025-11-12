@@ -12,6 +12,9 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
+  const { logSensitiveAction } = require('../utils/sensitive-log');
+  // Log attempt (before confirmation)
+  logSensitiveAction('createRule', args, 'unknown', [name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const {
@@ -28,6 +31,7 @@ async function handleCreateRule(args) {
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE && !confirm) {
+    // Already logged above
     const safeName = sanitizeText(name);
     const safeFrom = sanitizeText(fromAddresses || 'Any');
     const safeSubject = sanitizeText(containsSubject || 'Any');

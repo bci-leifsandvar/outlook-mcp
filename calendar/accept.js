@@ -10,12 +10,16 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleAcceptEvent(args) {
+  const { logSensitiveAction } = require('../utils/sensitive-log');
+  // Log attempt (before confirmation)
+  logSensitiveAction('acceptEvent', args, 'unknown', isSuspicious(eventId));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { eventId, comment, confirm } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE && !confirm) {
+    // Already logged above
     const safeEventId = sanitizeText(eventId);
     if (isSuspicious(eventId)) {
       return {
