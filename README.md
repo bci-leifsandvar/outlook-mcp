@@ -1,3 +1,7 @@
+# ⚠️ Fork Notice
+
+This repository is a fork. Any certifications, badges, or compliance claims from the upstream project (including MCPHub or MseeP.ai) are **not valid** for this fork. Use at your own risk and verify all security and compliance independently.
+
 ## Security: Suspicious Event Detection & Logging
 
 Sensitive actions (send, create, delete, move, rule create) are monitored for prompt injection and abuse patterns. The following are considered suspicious:
