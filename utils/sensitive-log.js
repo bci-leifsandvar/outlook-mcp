@@ -1,9 +1,11 @@
 /**
  * Sensitive action logging and alerting utility
  */
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { maskPIIinObject } = require('./sanitize');
 
 const LOG_PATH = process.env.SENSITIVE_ACTION_LOG || path.join(os.homedir(), 'outlook-mcp-sensitive-actions.log');
 const ALERT_THRESHOLD = 3; // Number of suspicious attempts before alert
@@ -12,12 +14,14 @@ const ALERT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 // In-memory tracker for suspicious attempts
 const suspiciousAttempts = {};
 
+
 function logSensitiveAction(action, args, user = 'unknown', suspicious = false) {
+  const maskedArgs = maskPIIinObject(args);
   const entry = {
     timestamp: new Date().toISOString(),
     action,
     user,
-    args,
+    args: maskedArgs,
     suspicious
   };
   fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');

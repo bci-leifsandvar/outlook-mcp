@@ -2,17 +2,22 @@
 
 This repository is a fork. Any certifications, badges, or compliance claims from the upstream project (including MCPHub or MseeP.ai) are **not valid** for this fork. Use at your own risk and verify all security and compliance independently.
 
-## Security: Suspicious Event Detection & Logging
+## Security: Data Protection, Logging & Monitoring
 
-Sensitive actions (send, create, delete, move, rule create) are monitored for prompt injection and abuse patterns. The following are considered suspicious:
+**Token Encryption at Rest:**
+- All tokens are encrypted using AES-256-GCM before being saved to disk. The encryption key must be set via the `MCP_TOKEN_KEY` environment variable (64 hex characters).
 
-- Inputs containing `user:`, `assistant:`, code block markers (```), triple hash (`###`), double newlines, or `<script>` tags
-- Any pattern listed in `utils/sanitize.js` SUSPICIOUS_PATTERNS
+**PII Masking in Logs:**
+- Sensitive action logs automatically mask or redact PII (such as email addresses and simple names) before writing to disk. See `utils/sanitize.js` for masking logic.
 
-If a suspicious pattern is detected:
-- The action is blocked (if in a confirmation prompt)
-- The attempt is logged in `~/outlook-mcp-sensitive-actions.log`
-- Repeated suspicious attempts (3+ in 10 minutes) trigger an alert entry in the log
+**Suspicious Event Detection & Logging:**
+- Sensitive actions (send, create, delete, move, rule create) are monitored for prompt injection and abuse patterns. The following are considered suspicious:
+  - Inputs containing `user:`, `assistant:`, code block markers (```), triple hash (`###`), double newlines, or `<script>` tags
+  - Any pattern listed in `utils/sanitize.js` SUSPICIOUS_PATTERNS
+- If a suspicious pattern is detected:
+  - The action is blocked (if in a confirmation prompt)
+  - The attempt is logged in `~/outlook-mcp-sensitive-actions.log` (with PII masked)
+  - Repeated suspicious attempts (3+ in 10 minutes) trigger an alert entry in the log
 
 You can tune patterns in `utils/sanitize.js` and adjust logging in `utils/sensitive-log.js`.
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ryaker-outlook-mcp-badge.png)](https://mseep.ai/app/ryaker-outlook-mcp)
@@ -64,7 +69,9 @@ Certified by MCPHub https://mcphub.com/mcp-servers/ryaker/outlook-mcp
 │   ├── odata-helpers.js       # OData query building
 │   ├── mock-data.js           # Test mode data
 │   ├── sanitize.js            # Input sanitization helpers
-│   └── sensitive-log.js       # Sensitive action logging/alerting
+│   ├── sensitive-log.js       # Sensitive action logging/alerting
+│   └── crypto.js              # Token encryption/decryption helpers
+├── test-encryption.js         # (Optional) Test script for encryption/logging
 ```
 
 ## Features

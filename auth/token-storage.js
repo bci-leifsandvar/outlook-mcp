@@ -1,4 +1,5 @@
 const fs = require('fs').promises;
+const { encrypt, decrypt } = require('../utils/crypto');
 const path = require('path');
 const https = require('https');
 const querystring = require('querystring');
@@ -26,9 +27,10 @@ class TokenStorage {
 
   async _loadTokensFromFile() {
     try {
-      const tokenData = await fs.readFile(this.config.tokenStorePath, 'utf8');
+      const encryptedData = await fs.readFile(this.config.tokenStorePath, 'utf8');
+      const tokenData = decrypt(encryptedData);
       this.tokens = JSON.parse(tokenData);
-      console.log('Tokens loaded from file.');
+      console.log('Tokens loaded from encrypted file.');
       return this.tokens;
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -47,12 +49,12 @@ class TokenStorage {
       return false;
     }
     try {
-      await fs.writeFile(this.config.tokenStorePath, JSON.stringify(this.tokens, null, 2));
-      console.log('Tokens saved successfully.');
-      // return true; // No longer returning boolean, will throw on error.
+      const encrypted = encrypt(JSON.stringify(this.tokens));
+      await fs.writeFile(this.config.tokenStorePath, encrypted);
+      console.log('Tokens saved (encrypted) successfully.');
     } catch (error) {
       console.error('Error saving token cache:', error);
-      throw error; // Propagate the error
+      throw error;
     }
   }
 

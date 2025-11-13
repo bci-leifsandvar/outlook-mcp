@@ -1,3 +1,26 @@
+// Mask email addresses and simple PII patterns
+function maskPII(input) {
+  if (typeof input !== 'string') return input;
+  // Mask email addresses
+  let masked = input.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email]');
+  // Mask simple names (e.g., John Doe)
+  masked = masked.replace(/\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g, '[name]');
+  return masked;
+}
+
+function maskPIIinObject(obj) {
+  if (typeof obj === 'string') return maskPII(obj);
+  if (Array.isArray(obj)) return obj.map(maskPIIinObject);
+  if (obj && typeof obj === 'object') {
+    const out = {};
+    for (const k in obj) out[k] = maskPIIinObject(obj[k]);
+    return out;
+  }
+  return obj;
+}
+
+module.exports.maskPII = maskPII;
+module.exports.maskPIIinObject = maskPIIinObject;
 /**
  * Input sanitization and escaping utilities for prompt injection defense
  */
