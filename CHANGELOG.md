@@ -1,4 +1,10 @@
 ## [Unreleased]
+- Tokens are now encrypted at rest using AES-256-GCM; key set via MCP_TOKEN_KEY
+- Sensitive action logs now mask/redact PII (emails, names) before writing
+- Added utils/crypto.js for encryption/decryption helpers
+- Added test-encryption.js for local encryption/logging tests
+- Updated .gitignore to cover all common npm, build, and sensitive files
+## [Unreleased]
 - Changed default timezone from "Central European Standard Time" to "Pacific Standard Time" (PST)
 # Changelog for outlook-mcp (Fork)
 
