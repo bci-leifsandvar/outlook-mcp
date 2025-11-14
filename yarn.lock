@@ -624,10 +624,17 @@
     ts-node "^10.9.2"
     zod "^3.25.76"
 
-"@modelcontextprotocol/sdk@^1.1.0", "@modelcontextprotocol/sdk@^1.20.1":
-  version "1.21.1"
-  resolved "https://registry.npmjs.org/@modelcontextprotocol/sdk/-/sdk-1.21.1.tgz"
-  integrity sha512-UyLFcJLDvUuZbGnaQqXFT32CpPpGj7VS19roLut6gkQVhb439xUzYWbsUvdI3ZPL+2hnFosuugtYWE0Mcs1rmQ==
+<<<<<<< Updated upstream
+"@modelcontextprotocol/sdk@^1.1.0", "@modelcontextprotocol/sdk@^1.10.0":
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/@modelcontextprotocol/sdk/-/sdk-1.10.1.tgz#b7b83cfd9a382f8b38970bccd8e97b1f7155edca"
+  integrity sha512-xNYdFdkJqEfIaTVP1gPKoEvluACHZsHZegIoICX8DM1o6Qf3G5u2BQJHmgd0n4YgRPqqK/u1ujQvrgAxxSJT9w==
+=======
+"@modelcontextprotocol/sdk@^1.20.1", "@modelcontextprotocol/sdk@^1.22.0":
+  version "1.22.0"
+  resolved "https://registry.npmjs.org/@modelcontextprotocol/sdk/-/sdk-1.22.0.tgz"
+  integrity sha512-VUpl106XVTCpDmTBil2ehgJZjhyLY2QZikzF8NvTXtLRF1CvO5iEE2UNZdVIUer35vFOwMKYeUGbjJtvPWan3g==
+>>>>>>> Stashed changes
   dependencies:
     ajv "^8.17.1"
     ajv-formats "^3.0.1"
@@ -3172,12 +3179,16 @@ router@^2.2.0:
     parseurl "^1.3.3"
     path-to-regexp "^8.0.0"
 
+<<<<<<< Updated upstream
+rxjs@^7.8.1:
+=======
 run-applescript@^7.0.0:
   version "7.1.0"
   resolved "https://registry.npmjs.org/run-applescript/-/run-applescript-7.1.0.tgz"
   integrity sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==
 
-rxjs@^7.8.1, rxjs@7.8.2:
+rxjs@^7.8.1, rxjs@^7.8.2, rxjs@7.8.2:
+>>>>>>> Stashed changes
   version "7.8.2"
   resolved "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz"
   integrity sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+
 // Only load .env if not running under Claude config (i.e., if not already provided)
 if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING) {
   require('dotenv').config();
@@ -55,12 +55,17 @@ const mcpServer = new McpServer(
 // Handle all requests
 mcpServer.fallbackRequestHandler = async (request) => {
   try {
+    console.error('DEBUG: Entered fallbackRequestHandler');
+    console.error('FULL REQUEST:', JSON.stringify(request));
     const { method, params, id } = request;
     console.error(`REQUEST: ${method} [${id}]`);
-    
+
+    // Log available tools for debugging
+    console.error('DEBUG: Available tools:', TOOLS.map(t => t.name));
+
     // Initialize handler
     if (method === "initialize") {
-      console.error(`INITIALIZE REQUEST: ID [${id}]`);
+      console.error(`DEBUG: Handling initialize request [${id}]`);
       return {
         protocolVersion: "2024-11-05",
         capabilities: { 
@@ -72,13 +77,13 @@ mcpServer.fallbackRequestHandler = async (request) => {
         serverInfo: { name: config.SERVER_NAME, version: config.SERVER_VERSION }
       };
     }
-    
+
     // Tools list handler
     if (method === "tools/list") {
-      console.error(`TOOLS LIST REQUEST: ID [${id}]`);
-      console.error(`TOOLS COUNT: ${TOOLS.length}`);
-      console.error(`TOOLS NAMES: ${TOOLS.map(t => t.name).join(', ')}`);
-      
+      console.error(`DEBUG: Handling tools/list request [${id}]`);
+      console.error(`DEBUG: Tools count: ${TOOLS.length}`);
+      console.error(`DEBUG: Tools names: ${TOOLS.map(t => t.name).join(', ')}`);
+
       return {
         tools: TOOLS.map(tool => ({
           name: tool.name,
@@ -87,25 +92,46 @@ mcpServer.fallbackRequestHandler = async (request) => {
         }))
       };
     }
-    
+
     // Required empty responses for other capabilities
-    if (method === "resources/list") return { resources: [] };
-    if (method === "prompts/list") return { prompts: [] };
-    
+    if (method === "resources/list") {
+      console.error(`DEBUG: Handling resources/list request [${id}]`);
+      return { resources: [] };
+    }
+    if (method === "prompts/list") {
+      console.error(`DEBUG: Handling prompts/list request [${id}]`);
+      return { prompts: [] };
+    }
+
     // Tool call handler
     if (method === "tools/call") {
       try {
         const { name, arguments: args = {} } = params || {};
-        
-        console.error(`TOOL CALL: ${name}`);
-        
-        // Find the tool handler
+        console.error(`DEBUG: Handling tools/call request for tool: ${name}`);
+
+        // Enhanced debugging for tool lookup
+        console.error('DEBUG: Current TOOLS array:', TOOLS.map(tool => ({ name: tool.name, handler: !!tool.handler })));
+        console.error(`DEBUG: Searching for tool: ${name}`);
+
         const tool = TOOLS.find(t => t.name === name);
-        
-        if (tool && tool.handler) {
-          return await tool.handler(args);
+        if (tool) {
+          console.error(`DEBUG: Tool found: ${name}`);
+          console.error(`DEBUG: Tool details:`, {
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+            hasHandler: !!tool.handler
+          });
+
+          if (tool.handler) {
+            return await tool.handler(args);
+          } else {
+            console.error(`DEBUG: Tool handler missing for: ${name}`);
+          }
+        } else {
+          console.error(`DEBUG: Tool not found: ${name}`);
         }
-        
+
         // Tool not found
         return {
           error: {
@@ -114,7 +140,7 @@ mcpServer.fallbackRequestHandler = async (request) => {
           }
         };
       } catch (error) {
-        console.error(`Error in tools/call:`, error);
+        console.error(`DEBUG: Error in tools/call:`, error);
         return {
           error: {
             code: -32603,
@@ -123,8 +149,9 @@ mcpServer.fallbackRequestHandler = async (request) => {
         };
       }
     }
-    
+
     // For any other method, return method not found
+    console.error(`DEBUG: Method not found: ${method}`);
     return {
       error: {
         code: -32601,
@@ -132,7 +159,7 @@ mcpServer.fallbackRequestHandler = async (request) => {
       }
     };
   } catch (error) {
-    console.error(`Error in fallbackRequestHandler:`, error);
+    console.error(`DEBUG: Error in fallbackRequestHandler:`, error);
     return {
       error: {
         code: -32603,
