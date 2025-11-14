@@ -1,7 +1,7 @@
 // Production environment checks
 const isProd = process.env.NODE_ENV === 'production' || process.env.MCP_ENV === 'production';
 if (isProd) {
-  if (process.env.USE_TEST_MODE === 'true') {
+  if (isTestMode) {
     console.error('SECURITY ERROR: Test mode must not be enabled in production!');
     process.exit(1);
   }
@@ -25,14 +25,19 @@ const failClosed = (msg) => {
   process.exit(1);
 };
 
-// Validate required environment/config
-if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
-  failClosed('OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in environment or .env file.');
+
+// Validate required environment/config (skip if USE_TEST_MODE=true or TRUE)
+const isTestMode = (process.env.USE_TEST_MODE || '').toLowerCase() === 'true';
+if (!isTestMode) {
+  if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
+    failClosed('OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in environment or .env file.');
+  }
 }
 
 const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir() || '/tmp';
 // Helper for sensitive actions: call before performing sensitive operations
 module.exports.ensureConfigSafe = () => {
+  if (isTestMode) return;
   if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
     throw new Error('Configuration missing: OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET are required.');
   }
@@ -47,7 +52,7 @@ module.exports = {
   SERVER_VERSION: "1.0.0",
   
   // Test mode setting
-  USE_TEST_MODE: process.env.USE_TEST_MODE === 'true',
+  USE_TEST_MODE: isTestMode,
   
   // Authentication configuration
   /**

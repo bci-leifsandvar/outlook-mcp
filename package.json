@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "auth-server": "node outlook-auth-server.js",
-    "test-mode": "USE_TEST_MODE=true node index.js",
+    "test-mode": "set USE_TEST_MODE=true && node index.js",
     "inspect": "npx @modelcontextprotocol/inspector node index.js",
     "test": "jest"
   },

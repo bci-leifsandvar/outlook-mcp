@@ -1,11 +1,15 @@
 #!/usr/bin/env node
+// Only load .env if not running under Claude config (i.e., if not already provided)
+if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING) {
+  require('dotenv').config();
+}
 /**
  * Outlook MCP Server - Main entry point
  * 
  * A Model Context Protocol server that provides access to
  * Microsoft Outlook through the Microsoft Graph API.
  */
-const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
+const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
 const config = require('./config');
 
@@ -20,6 +24,7 @@ const { rulesTools } = require('./rules');
 console.error(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
 console.error(`Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
 
+
 // Combine all tools
 const TOOLS = [
   ...authTools,
@@ -30,8 +35,12 @@ const TOOLS = [
   // Future modules: contactsTools, etc.
 ];
 
+// Debug: Print all registered tool names and count
+console.error('DEBUG: Registered tools:', TOOLS.map(t => t.name));
+console.error('DEBUG: Tool count:', TOOLS.length);
+
 // Create server with tools capabilities
-const server = new Server(
+const mcpServer = new McpServer(
   { name: config.SERVER_NAME, version: config.SERVER_VERSION },
   { 
     capabilities: { 
@@ -44,7 +53,7 @@ const server = new Server(
 );
 
 // Handle all requests
-server.fallbackRequestHandler = async (request) => {
+mcpServer.fallbackRequestHandler = async (request) => {
   try {
     const { method, params, id } = request;
     console.error(`REQUEST: ${method} [${id}]`);
@@ -140,7 +149,7 @@ process.on('SIGTERM', () => {
 
 // Start the server
 const transport = new StdioServerTransport();
-server.connect(transport)
+mcpServer.connect(transport)
   .then(() => console.error(`${config.SERVER_NAME} connected and listening`))
   .catch(error => {
     console.error(`Connection error: ${error.message}`);
