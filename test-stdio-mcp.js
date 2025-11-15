@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Minimal stdio test for MCP server
 const { spawn } = require('child_process');
 
@@ -11,11 +10,14 @@ const aboutRequest = '{"jsonrpc":"2.0","id":"about-test","method":"tools/call","
 
 let sentAbout = false;
 mcpProcess.stdout.on('data', (data) => {
-  console.log('STDIO MCP server response:', data.toString());
-  if (!sentAbout) {
+  const str = data.toString();
+  console.log('STDIO MCP server response:', str);
+
+  // Only send aboutRequest after receiving the initialize response
+  if (!sentAbout && str.includes('"id":"init-1"')) {
     mcpProcess.stdin.write(aboutRequest);
     sentAbout = true;
-  } else {
+  } else if (sentAbout && str.includes('"id":"about-test"')) {
     mcpProcess.stdin.end();
     mcpProcess.kill();
   }

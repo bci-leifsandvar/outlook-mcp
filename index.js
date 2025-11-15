@@ -52,122 +52,69 @@ const mcpServer = new McpServer(
   }
 );
 
-// Handle all requests
-mcpServer.fallbackRequestHandler = async (request) => {
+// Register tools/list handler
+mcpServer.setRequestHandler({ method: "tools/list" }, async () => {
+  console.error('DEBUG: Handling tools/list request');
+  console.error(`DEBUG: Tools count: ${TOOLS.length}`);
+  console.error(`DEBUG: Tools names: ${TOOLS.map(t => t.name).join(', ')}`);
+
+  return {
+    tools: TOOLS.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema
+    }))
+  };
+});
+
+// Register tools/call handler
+mcpServer.setRequestHandler({ method: "tools/call" }, async (request) => {
   try {
-    console.error('DEBUG: Entered fallbackRequestHandler');
-    console.error('FULL REQUEST:', JSON.stringify(request));
-    const { method, params, id } = request;
-    console.error(`REQUEST: ${method} [${id}]`);
+    const { name, arguments: args = {} } = request.params || {};
+    console.error(`DEBUG: Handling tools/call request for tool: ${name}`);
 
-    // Log available tools for debugging
-    console.error('DEBUG: Available tools:', TOOLS.map(t => t.name));
+    // Enhanced debugging for tool lookup
+    console.error('DEBUG: Current TOOLS array:', TOOLS.map(tool => ({ name: tool.name, handler: !!tool.handler })));
+    console.error(`DEBUG: Searching for tool: ${name}`);
 
-    // Initialize handler
-    if (method === "initialize") {
-      console.error(`DEBUG: Handling initialize request [${id}]`);
-      return {
-        protocolVersion: "2024-11-05",
-        capabilities: { 
-          tools: TOOLS.reduce((acc, tool) => {
-            acc[tool.name] = {};
-            return acc;
-          }, {})
-        },
-        serverInfo: { name: config.SERVER_NAME, version: config.SERVER_VERSION }
-      };
+    const tool = TOOLS.find(t => t.name === name);
+    if (!tool) {
+      console.error(`DEBUG: Tool not found: ${name}`);
+      throw new Error(`Tool not found: ${name}`);
     }
 
-    // Tools list handler
-    if (method === "tools/list") {
-      console.error(`DEBUG: Handling tools/list request [${id}]`);
-      console.error(`DEBUG: Tools count: ${TOOLS.length}`);
-      console.error(`DEBUG: Tools names: ${TOOLS.map(t => t.name).join(', ')}`);
+    console.error(`DEBUG: Tool found: ${name}`);
+    console.error(`DEBUG: Tool details:`, {
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      hasHandler: !!tool.handler
+    });
 
-      return {
-        tools: TOOLS.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema
-        }))
-      };
+    if (!tool.handler) {
+      console.error(`DEBUG: Tool handler missing for: ${name}`);
+      throw new Error(`Tool handler missing for: ${name}`);
     }
 
-    // Required empty responses for other capabilities
-    if (method === "resources/list") {
-      console.error(`DEBUG: Handling resources/list request [${id}]`);
-      return { resources: [] };
-    }
-    if (method === "prompts/list") {
-      console.error(`DEBUG: Handling prompts/list request [${id}]`);
-      return { prompts: [] };
-    }
-
-    // Tool call handler
-    if (method === "tools/call") {
-      try {
-        const { name, arguments: args = {} } = params || {};
-        console.error(`DEBUG: Handling tools/call request for tool: ${name}`);
-
-        // Enhanced debugging for tool lookup
-        console.error('DEBUG: Current TOOLS array:', TOOLS.map(tool => ({ name: tool.name, handler: !!tool.handler })));
-        console.error(`DEBUG: Searching for tool: ${name}`);
-
-        const tool = TOOLS.find(t => t.name === name);
-        if (tool) {
-          console.error(`DEBUG: Tool found: ${name}`);
-          console.error(`DEBUG: Tool details:`, {
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-            hasHandler: !!tool.handler
-          });
-
-          if (tool.handler) {
-            return await tool.handler(args);
-          } else {
-            console.error(`DEBUG: Tool handler missing for: ${name}`);
-          }
-        } else {
-          console.error(`DEBUG: Tool not found: ${name}`);
-        }
-
-        // Tool not found
-        return {
-          error: {
-            code: -32601,
-            message: `Tool not found: ${name}`
-          }
-        };
-      } catch (error) {
-        console.error(`DEBUG: Error in tools/call:`, error);
-        return {
-          error: {
-            code: -32603,
-            message: `Error processing tool call: ${error.message}`
-          }
-        };
-      }
-    }
-
-    // For any other method, return method not found
-    console.error(`DEBUG: Method not found: ${method}`);
-    return {
-      error: {
-        code: -32601,
-        message: `Method not found: ${method}`
-      }
-    };
+    const result = await tool.handler(args);
+    return result;
   } catch (error) {
-    console.error(`DEBUG: Error in fallbackRequestHandler:`, error);
-    return {
-      error: {
-        code: -32603,
-        message: `Error processing request: ${error.message}`
-      }
-    };
+    console.error(`DEBUG: Error in tools/call:`, error);
+    throw error;
   }
-};
+});
+
+// Register resources/list handler (required by MCP protocol)
+mcpServer.setRequestHandler({ method: "resources/list" }, async () => {
+  console.error('DEBUG: Handling resources/list request');
+  return { resources: [] };
+});
+
+// Register prompts/list handler (required by MCP protocol)
+mcpServer.setRequestHandler({ method: "prompts/list" }, async () => {
+  console.error('DEBUG: Handling prompts/list request');
+  return { prompts: [] };
+});
 
 // Make the script executable
 process.on('SIGTERM', () => {
