@@ -75,6 +75,16 @@ app.get('/v1.0/me/messages', (req, res) => {
   });
 });
 
+// List Emails from Specific Folder
+app.get('/v1.0/me/mailFolders/:folderId/messages', (req, res) => {
+  console.log('[MOCK] List emails from folder:', req.params.folderId);
+  const top = parseInt(req.query.$top) || 10;
+  res.json({
+    '@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users/me/mailFolders/messages',
+    value: mockData.emails.slice(0, top)
+  });
+});
+
 // Get Single Email
 app.get('/v1.0/me/messages/:id', (req, res) => {
   console.log('[MOCK] Get email:', req.params.id);
@@ -87,6 +97,20 @@ app.get('/v1.0/me/messages/:id', (req, res) => {
         content: 'This is the full body of the mock email message.'
       }
     });
+  } else {
+    res.status(404).json({ error: { message: 'Message not found' } });
+  }
+});
+
+// Mark Email as Read/Unread (PATCH)
+app.patch('/v1.0/me/messages/:id', (req, res) => {
+  console.log('[MOCK] Mark email as read/unread:', req.params.id);
+  const email = mockData.emails.find(e => e.id === req.params.id);
+  if (email) {
+    if (req.body.isRead !== undefined) {
+      email.isRead = req.body.isRead;
+    }
+    res.json(email);
   } else {
     res.status(404).json({ error: { message: 'Message not found' } });
   }

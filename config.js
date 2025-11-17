@@ -28,6 +28,7 @@ const failClosed = (msg) => {
 
 // Validate required environment/config (skip if USE_TEST_MODE=true or TRUE)
 const isTestMode = (process.env.USE_TEST_MODE || '').toLowerCase() === 'true';
+const useMockGraphApi = (process.env.USE_MOCK_GRAPH_API || '').toLowerCase() === 'true';
 if (!isTestMode) {
   if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
     failClosed('OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in environment or .env file.');
@@ -35,8 +36,9 @@ if (!isTestMode) {
 }
 
 const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir() || '/tmp';
+
 // Helper for sensitive actions: call before performing sensitive operations
-module.exports.ensureConfigSafe = () => {
+const ensureConfigSafe = () => {
   if (isTestMode) return;
   if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
     throw new Error('Configuration missing: OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET are required.');
@@ -44,6 +46,7 @@ module.exports.ensureConfigSafe = () => {
 };
 
 module.exports = {
+  ensureConfigSafe,
   // Secure prompting mode (explicit user confirmation for sensitive actions)
   // Enabled by default unless explicitly set to 'false'
   SECURE_PROMPT_MODE: process.env.SECURE_PROMPT_MODE !== 'false',
@@ -53,6 +56,7 @@ module.exports = {
   
   // Test mode setting
   USE_TEST_MODE: isTestMode,
+  USE_MOCK_GRAPH_API: useMockGraphApi,
   
   // Authentication configuration
   /**

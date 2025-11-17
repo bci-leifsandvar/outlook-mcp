@@ -7,6 +7,7 @@
     "start": "node index.js",
     "auth-server": "node outlook-auth-server.js",
     "test-mode": "set USE_TEST_MODE=true && node index.js",
+    "mock-server": "node mock-graph-server.js",
     "inspect": "npx @modelcontextprotocol/inspector node index.js",
     "test": "jest"
   },

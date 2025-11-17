@@ -11,12 +11,17 @@ const { DEFAULT_TIMEZONE } = require('../config');
  * @returns {object} - MCP response
  */
 async function handleCreateEvent(args) {
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  // Log attempt (before confirmation)
-  logSensitiveAction('createEvent', args, 'unknown', [subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious));
+  // Import utilities FIRST before using them
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
+  
+  // Extract args SECOND
   const { subject, start, end, attendees, body, confirm } = args;
+  
+  // Now we can use the variables - Log attempt (after variables are defined)
+  logSensitiveAction('createEvent', args, 'unknown', [subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious));
+  
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE && !confirm) {

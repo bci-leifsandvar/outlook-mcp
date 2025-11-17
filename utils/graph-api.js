@@ -16,10 +16,16 @@ const mockData = require('./mock-data');
  * @returns {Promise<object>} - The API response
  */
 async function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) {
-  // For test tokens, we'll simulate the API call
+  // For local test mode, simulate with canned mock data
   if (config.USE_TEST_MODE && accessToken.startsWith('test_access_token_')) {
-    console.error(`TEST MODE: Simulating ${method} ${path} API call`);
+    console.error(`TEST MODE: Simulating ${method} ${path} API call (local mock data)`);
     return mockData.simulateGraphAPIResponse(method, path, data, queryParams);
+  }
+  // For mock Graph API server mode, always route to GRAPH_API_ENDPOINT
+  if (config.USE_MOCK_GRAPH_API) {
+    console.error(`MOCK GRAPH API MODE: Routing ${method} ${path} to ${config.GRAPH_API_ENDPOINT}`);
+    // Build URL from path and queryParams as usual
+    // ...existing real API call logic below...
   }
 
   try {
