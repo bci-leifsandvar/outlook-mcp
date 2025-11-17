@@ -2,6 +2,7 @@
  * Microsoft Graph API helper functions
  */
 const https = require('https');
+const http = require('http');
 const config = require('../config');
 const mockData = require('./mock-data');
 
@@ -83,7 +84,10 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
         }
       };
       
-      const req = https.request(finalUrl, options, (res) => {
+      // Choose http or https based on URL protocol
+      const protocol = finalUrl.startsWith('https://') ? https : http;
+      
+      const req = protocol.request(finalUrl, options, (res) => {
         let responseData = '';
         
         res.on('data', (chunk) => {
