@@ -38,7 +38,25 @@ const server = http.createServer((req, res) => {
   
   if (pathname === '/auth/callback') {
     const query = parsedUrl.query;
-    
+    // CSRF protection: check state token
+    const cookies = (req.headers.cookie || '').split(';').reduce((acc, c) => {
+      const [k, v] = c.split('=');
+      if (k && v) acc[k.trim()] = decodeURIComponent(v.trim());
+      return acc;
+    }, {});
+    if (!query.state || !cookies.oauth_state || query.state !== cookies.oauth_state) {
+      res.writeHead(403, { 'Content-Type': 'text/html' });
+      res.end(`
+        <html>
+          <head><title>CSRF Protection</title></head>
+          <body>
+            <h1>CSRF Protection Error</h1>
+            <p>State token mismatch. Please restart the authentication process.</p>
+          </body>
+        </html>
+      `);
+      return;
+    }
     if (query.error) {
       console.error(`Authentication error: ${query.error} - ${query.error_description}`);
       res.writeHead(400, { 'Content-Type': 'text/html' });
@@ -178,20 +196,24 @@ const server = http.createServer((req, res) => {
     const clientId = query.client_id || AUTH_CONFIG.clientId;
     
     // Build the authorization URL
+    // Generate a random state token for CSRF protection
+    const crypto = require('crypto');
+    const stateToken = crypto.randomBytes(16).toString('hex');
     const authParams = {
       client_id: clientId,
       response_type: 'code',
       redirect_uri: AUTH_CONFIG.redirectUri,
       scope: AUTH_CONFIG.scopes.join(' '),
       response_mode: 'query',
-      state: Date.now().toString() // Simple state parameter for security
+      state: stateToken
     };
-    
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${querystring.stringify(authParams)}`;
     console.log(`Redirecting to: ${authUrl}`);
-    
-    // Redirect to Microsoft's login page
-    res.writeHead(302, { 'Location': authUrl });
+    // Set state token in cookie
+    res.writeHead(302, {
+      'Location': authUrl,
+      'Set-Cookie': `oauth_state=${encodeURIComponent(stateToken)}; HttpOnly; Path=/; Max-Age=600`
+    });
     res.end();
   } else if (pathname === '/') {
     // Root path - provide instructions

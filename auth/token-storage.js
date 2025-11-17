@@ -51,6 +51,11 @@ class TokenStorage {
     try {
       const encrypted = encrypt(JSON.stringify(this.tokens));
       await fs.writeFile(this.config.tokenStorePath, encrypted);
+      try {
+        require('fs').chmodSync(this.config.tokenStorePath, 0o600);
+      } catch (e) {
+        // Ignore errors if file permissions can't be set
+      }
       console.log('Tokens saved (encrypted) successfully.');
     } catch (error) {
       console.error('Error saving token cache:', error);

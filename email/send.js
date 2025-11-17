@@ -11,14 +11,32 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleSendEmail(args) {
+    // Simple in-memory rate limiting (max 5 emails per minute per user)
+    const RATE_LIMIT_MAX = 5;
+    const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+    const rateLimitStore = global.__sendEmailRateLimit || (global.__sendEmailRateLimit = {});
+    const userKey = (args.from || 'unknown') + ':' + (args.user || 'unknown');
+    const now = Date.now();
+    if (!rateLimitStore[userKey]) rateLimitStore[userKey] = [];
+    // Remove timestamps older than window
+    rateLimitStore[userKey] = rateLimitStore[userKey].filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+    if (rateLimitStore[userKey].length >= RATE_LIMIT_MAX) {
+      return {
+        content: [{ type: "text", text: `Rate limit exceeded: Max ${RATE_LIMIT_MAX} emails per minute. Please wait before sending more.` }],
+        isError: true
+      };
+    }
+    // Add current timestamp
+    rateLimitStore[userKey].push(now);
   const { logSensitiveAction } = require('../utils/sensitive-log');
   // Log attempt (before confirmation)
-  logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirm } = args;
-  // Secure prompting mode (from config)
+  logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
   const { SECURE_PROMPT_MODE } = require('../config');
+  const sanitizeHtml = require('sanitize-html');
+  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE && !confirm) {
     // Already logged above
     // Sanitize and check for suspicious input
@@ -47,29 +65,28 @@ async function handleSendEmail(args) {
   // Validate required parameters
   if (!to) {
     return {
-      content: [{ 
-        type: "text", 
-        text: "Recipient (to) is required."
-      }]
+      content: [{ type: "text", text: "Recipient (to) is required." }]
     };
   }
-  
   if (!subject) {
     return {
-      content: [{ 
-        type: "text", 
-        text: "Subject is required."
-      }]
+      content: [{ type: "text", text: "Subject is required." }]
     };
   }
-  
   if (!body) {
     return {
-      content: [{ 
-        type: "text", 
-        text: "Body content is required."
-      }]
+      content: [{ type: "text", text: "Body content is required." }]
     };
+  }
+  // Validate email addresses
+  const allEmails = [ ...(to ? to.split(',') : []), ...(cc ? cc.split(',') : []), ...(bcc ? bcc.split(',') : []) ];
+  for (const email of allEmails) {
+    if (email.trim() && !emailRegex.test(email.trim())) {
+      return {
+        content: [{ type: "text", text: `Invalid email address detected: ${email.trim()}` }],
+        isError: true
+      };
+    }
   }
   
   try {
@@ -104,13 +121,23 @@ async function handleSendEmail(args) {
       };
     }) : [];
     
+    // Sanitize HTML body if needed
+    let sanitizedBody = body;
+    let contentType = 'text';
+    if (body.includes('<html') || body.includes('<body') || body.includes('<div')) {
+      sanitizedBody = sanitizeHtml(body, {
+        allowedTags: sanitizeHtml.defaults.allowedTags,
+        allowedAttributes: sanitizeHtml.defaults.allowedAttributes
+      });
+      contentType = 'html';
+    }
     // Prepare email object
     const emailObject = {
       message: {
         subject,
         body: {
-          contentType: body.includes('<html') ? 'html' : 'text',
-          content: body
+          contentType,
+          content: sanitizedBody
         },
         toRecipients,
         ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
@@ -126,24 +153,19 @@ async function handleSendEmail(args) {
     return {
       content: [{ 
         type: "text", 
-        text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${body.length} characters`
+        text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${sanitizedBody.length} characters`
       }]
     };
   } catch (error) {
     if (error.message === 'Authentication required') {
       return {
-        content: [{ 
-          type: "text", 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
+        content: [{ type: "text", text: "Authentication required. Please use the 'authenticate' tool first." }]
       };
     }
-    
+    // Sanitize error message for client
     return {
-      content: [{ 
-        type: "text", 
-        text: `Error sending email: ${error.message}`
-      }]
+      content: [{ type: "text", text: "Error sending email. Please check your input and try again." }],
+      isError: true
     };
   }
 }

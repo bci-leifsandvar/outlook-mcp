@@ -86,7 +86,8 @@ module.exports = {
   },
   
   // Microsoft Graph API
-  GRAPH_API_ENDPOINT: 'https://graph.microsoft.com/v1.0/',
+  // Can be overridden with GRAPH_API_ENDPOINT env var (e.g., for mock server: http://localhost:4000/v1.0/)
+  GRAPH_API_ENDPOINT: process.env.GRAPH_API_ENDPOINT || 'https://graph.microsoft.com/v1.0/',
   
   // Calendar constants
   CALENDAR_SELECT_FIELDS: 'id,subject,start,end,location,bodyPreview,isAllDay,recurrence,attendees',

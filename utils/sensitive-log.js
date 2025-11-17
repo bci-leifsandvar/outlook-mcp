@@ -25,6 +25,11 @@ function logSensitiveAction(action, args, user = 'unknown', suspicious = false) 
     suspicious
   };
   fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
+  try {
+    fs.chmodSync(LOG_PATH, 0o600);
+  } catch (e) {
+    // Ignore errors if file permissions can't be set
+  }
 
   // Track and alert on repeated suspicious activity
   if (suspicious) {
@@ -41,6 +46,11 @@ function logSensitiveAction(action, args, user = 'unknown', suspicious = false) 
         alert: true,
         message: `ALERT: ${suspiciousAttempts[key].length} suspicious attempts for action ${action} by user ${user} in last 10 minutes.`
       }) + '\n');
+      try {
+        fs.chmodSync(LOG_PATH, 0o600);
+      } catch (e) {
+        // Ignore errors if file permissions can't be set
+      }
       // Optionally, trigger external alerting here
     }
   }
