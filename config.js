@@ -22,7 +22,11 @@ const failClosed = (msg) => {
   // Print error and exit process
   // (If used in a handler, can throw instead)
   console.error('CONFIGURATION ERROR:', msg);
-  process.exit(1);
+  if (process.env.NODE_ENV === 'test') {
+    throw new Error('CONFIGURATION ERROR: ' + msg);
+  } else {
+    process.exit(1);
+  }
 };
 
 
