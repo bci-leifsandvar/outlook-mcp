@@ -30,6 +30,19 @@ The Application provides the following mechanisms to support user rights:
 
 - **Deletion of Tokens and Revocation of Access:** Users may delete their authentication tokens and consent history at any time by using the application's logout or token removal feature, which permanently deletes these files from local storage. Users may also revoke application access via Microsoft Entra ID (Azure portal), which invalidates all OAuth tokens and disconnects the Application. For additional assurance, users may contact IT support (privacy@bci.com) to request manual deletion or audit of any locally stored authentication artifacts.
 
+## Data Handling and Privacy Notes
+
+### Local Logging and Data Storage
+- The Outlook MCP application does **not** log or persist user data locally. Only minimal operational logs (such as authentication events) are kept, and no email or calendar content is stored on disk.
+- Data is passed transiently between tools/modules and is not retained. The MCP server acts as a proxy, not a data store.
+
+### User Control and LLM Agents
+- As a local application, user data remains on the user's device and is not transmitted to third parties except Microsoft Graph (and, if used, an LLM agent).
+- Any data passed to an LLM agent (e.g., Claude) can be managed or deleted via that agent’s own portal/settings. Users should refer to the LLM provider’s privacy and complaint mechanisms for further control.
+
+### Formal Complaint Mechanism
+- For local applications, a formal complaint process is not typical. Users retain full control over their data, and any issues regarding data passed to an LLM agent should be managed through the LLM provider’s portal.
+
 ## Contact
 For privacy concerns or requests, contact: privacy@bci.com
 
