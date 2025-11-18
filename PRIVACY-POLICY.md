@@ -24,8 +24,11 @@ This Privacy Policy describes how the Outlook MCP Server ("the Application") col
 - Access is restricted to authorized users only.
 
 ## User Rights
-- Users may request access to their personal data processed by the Application.
-- Users may request deletion of their tokens and revoke access at any time.
+The Application provides the following mechanisms to support user rights:
+
+- **Access to Personal Data:** Users can view all personal data processed by the Application (such as emails and calendar events) directly through the Outlook MCP interface, which retrieves data in real-time from Microsoft Graph API. No personal data is stored locally except for authentication tokens and consent history, which can be provided to users upon request.
+
+- **Deletion of Tokens and Revocation of Access:** Users may delete their authentication tokens and consent history at any time by using the application's logout or token removal feature, which permanently deletes these files from local storage. Users may also revoke application access via Microsoft Entra ID (Azure portal), which invalidates all OAuth tokens and disconnects the Application. For additional assurance, users may contact IT support (privacy@bci.com) to request manual deletion or audit of any locally stored authentication artifacts.
 
 ## Contact
 For privacy concerns or requests, contact: privacy@bci.com

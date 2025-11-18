@@ -1,3 +1,15 @@
+const { maskPIIinObject } = require('../utils/sanitize');
+function structuredLog(level, message, details = {}) {
+  const maskedDetails = maskPIIinObject(details);
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...maskedDetails
+  };
+  // Output as JSON string for SIEM/monitoring compliance
+  console.error(JSON.stringify(entry));
+}
 const fs = require('fs').promises;
 const { encrypt, decrypt } = require('../utils/crypto');
 const path = require('path');
@@ -5,9 +17,41 @@ const https = require('https');
 const querystring = require('querystring');
 
 class TokenStorage {
+    // Consent tracking methods
+    async _loadConsentHistory() {
+      try {
+        const data = await require('fs').promises.readFile(this.config.consentStorePath, 'utf8');
+        this._consentHistory = JSON.parse(data);
+      } catch (err) {
+        this._consentHistory = [];
+      }
+    }
+
+    async _saveConsentHistory() {
+      try {
+        await require('fs').promises.writeFile(this.config.consentStorePath, JSON.stringify(this._consentHistory, null, 2), 'utf8');
+      } catch (err) {
+        // Silent fail
+      }
+    }
+
+    async recordConsent(scopes, source = 'oauth') {
+      const event = {
+        timestamp: new Date().toISOString(),
+        scopes,
+        source
+      };
+      this._consentHistory.push(event);
+      await this._saveConsentHistory();
+    }
+
+    getConsentHistory() {
+      return this._consentHistory;
+    }
   constructor(config) {
     this.config = {
       tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-tokens.json'),
+      consentStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-consent.json'),
       clientId: process.env.MS_CLIENT_ID,
       clientSecret: process.env.MS_CLIENT_SECRET,
       redirectUri: process.env.MS_REDIRECT_URI || 'http://localhost:3333/auth/callback',
@@ -19,9 +63,11 @@ class TokenStorage {
     this.tokens = null;
     this._loadPromise = null;
     this._refreshPromise = null;
+    this._consentHistory = [];
+    this._loadConsentHistory();
 
     if (!this.config.clientId || !this.config.clientSecret) {
-      console.warn("TokenStorage: MS_CLIENT_ID or MS_CLIENT_SECRET is not configured. Token operations might fail.");
+      structuredLog('warn', 'MS_CLIENT_ID or MS_CLIENT_SECRET is not configured. Token operations might fail.');
     }
   }
 
@@ -30,13 +76,13 @@ class TokenStorage {
       const encryptedData = await fs.readFile(this.config.tokenStorePath, 'utf8');
       const tokenData = decrypt(encryptedData);
       this.tokens = JSON.parse(tokenData);
-      console.log('Tokens loaded from encrypted file.');
+      structuredLog('info', 'Tokens loaded from encrypted file.');
       return this.tokens;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('Token file not found. No tokens loaded.');
+        structuredLog('info', 'Token file not found. No tokens loaded.');
       } else {
-        console.error('Error loading token cache:', error);
+        structuredLog('error', 'Error loading token cache', { error });
       }
       this.tokens = null;
       return null;
@@ -45,7 +91,7 @@ class TokenStorage {
 
   async _saveTokensToFile() {
     if (!this.tokens) {
-      console.warn('No tokens to save.');
+      structuredLog('warn', 'No tokens to save.');
       return false;
     }
     try {
@@ -56,9 +102,9 @@ class TokenStorage {
       } catch (e) {
         // Ignore errors if file permissions can't be set
       }
-      console.log('Tokens saved (encrypted) successfully.');
+      structuredLog('info', 'Tokens saved (encrypted) successfully.');
     } catch (error) {
-      console.error('Error saving token cache:', error);
+      structuredLog('error', 'Error saving token cache', { error });
       throw error;
     }
   }
@@ -91,23 +137,23 @@ class TokenStorage {
     await this.getTokens(); // Ensure tokens are loaded
 
     if (!this.tokens || !this.tokens.access_token) {
-      console.log('No access token available.');
+      structuredLog('info', 'No access token available.');
       return null;
     }
 
     if (this.isTokenExpired()) {
-      console.log('Access token expired or nearing expiration. Attempting refresh.');
+      structuredLog('info', 'Access token expired or nearing expiration. Attempting refresh.');
       if (this.tokens.refresh_token) {
         try {
           return await this.refreshAccessToken();
         } catch (refreshError) {
-          console.error('Failed to refresh access token:', refreshError);
+          structuredLog('error', 'Failed to refresh access token', { error: refreshError });
           this.tokens = null; // Invalidate tokens on refresh failure
           await this._saveTokensToFile(); // Persist invalidation
           return null;
         }
       } else {
-        console.warn('No refresh token available. Cannot refresh access token.');
+        structuredLog('warn', 'No refresh token available. Cannot refresh access token.');
         this.tokens = null; // Invalidate tokens as they are expired and cannot be refreshed
         await this._saveTokensToFile(); // Persist invalidation
         return null;
@@ -123,11 +169,11 @@ class TokenStorage {
 
     // Prevent multiple concurrent refresh attempts
     if (this._refreshPromise) {
-        console.log("Refresh already in progress, returning existing promise.");
+        structuredLog('info', 'Refresh already in progress, returning existing promise.');
         return this._refreshPromise.then(tokens => tokens.access_token);
     }
 
-    console.log('Attempting to refresh access token...');
+    structuredLog('info', 'Attempting to refresh access token...');
     const postData = querystring.stringify({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -171,12 +217,14 @@ class TokenStorage {
                             scopes: this.config.scopes
                           }
                         };
+                        // Record consent event
+                        await this.recordConsent((responseBody.scope || this.tokens.scope || '').split(' '), 'refresh');
                         try {
                             await this._saveTokensToFile();
-                            console.log('Access token refreshed and saved successfully.');
+                            structuredLog('info', 'Access token refreshed and saved successfully.');
                             resolve(this.tokens);
                         } catch (saveError) {
-                            console.error('Failed to save refreshed tokens:', saveError);
+                            structuredLog('error', 'Failed to save refreshed tokens', { error: saveError });
                             // Even if save fails, tokens are updated in memory.
                             // Depending on desired strictness, could reject here.
                             // For now, resolve with in-memory tokens but log critical error.
@@ -184,11 +232,11 @@ class TokenStorage {
                             reject(new Error(`Access token refreshed but failed to save: ${saveError.message}`));
                         }
                     } else {
-                        console.error('Error refreshing token:', responseBody);
+                        structuredLog('error', 'Error refreshing token', { responseBody });
                         reject(new Error(responseBody.error_description || `Token refresh failed with status ${res.statusCode}`));
                     }
                 } catch (e) { // Catch any error during parsing or saving
-                    console.error('Error processing refresh token response or saving tokens:', e);
+                    structuredLog('error', 'Error processing refresh token response or saving tokens', { error: e });
                     reject(e);
                 } finally {
                     this._refreshPromise = null; // Clear promise after completion
@@ -196,7 +244,7 @@ class TokenStorage {
             });
         });
         req.on('error', (error) => {
-            console.error('HTTP error during token refresh:', error);
+            structuredLog('error', 'HTTP error during token refresh', { error });
             reject(error);
             this._refreshPromise = null; // Clear promise on error
         });
@@ -212,7 +260,7 @@ class TokenStorage {
     if (!this.config.clientId || !this.config.clientSecret) {
         throw new Error("Client ID or Client Secret is not configured. Cannot exchange code for tokens.");
     }
-    console.log('Exchanging authorization code for tokens...');
+    structuredLog('info', 'Exchanging authorization code for tokens...');
     const postData = querystring.stringify({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -252,28 +300,30 @@ class TokenStorage {
                   details: responseBody.scope
                 }
               };
+              // Record consent event
+              await this.recordConsent((responseBody.scope || '').split(' '), 'oauth');
               try {
                 await this._saveTokensToFile();
-                console.log('Tokens exchanged and saved successfully.');
+                structuredLog('info', 'Tokens exchanged and saved successfully.');
                 resolve(this.tokens);
               } catch (saveError) {
-                console.error('Failed to save exchanged tokens:', saveError);
+                structuredLog('error', 'Failed to save exchanged tokens', { error: saveError });
                 // Similar to refresh, tokens are in memory but not persisted.
                 // Rejecting to indicate the operation wasn't fully successful.
                 reject(new Error(`Tokens exchanged but failed to save: ${saveError.message}`));
               }
             } else {
-              console.error('Error exchanging code for tokens:', responseBody);
+              structuredLog('error', 'Error exchanging code for tokens', { responseBody });
               reject(new Error(responseBody.error_description || `Token exchange failed with status ${res.statusCode}`));
             }
           } catch (e) { // Catch any error during parsing or saving
-            console.error('Error processing token exchange response or saving tokens:', e, "Raw data:", data);
+            structuredLog('error', 'Error processing token exchange response or saving tokens', { error: e, data });
             reject(new Error(`Error processing token response: ${e.message}. Response data: ${data}`));
           }
         });
       });
       req.on('error', (error) => {
-        console.error('HTTP error during code exchange:', error);
+        structuredLog('error', 'HTTP error during code exchange', { error });
         reject(error);
       });
       req.write(postData);
@@ -286,13 +336,20 @@ class TokenStorage {
     this.tokens = null;
     try {
       await fs.unlink(this.config.tokenStorePath);
-      console.log('Token file deleted successfully.');
+      structuredLog('info', 'Token file deleted successfully.');
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('Token file not found, nothing to delete.');
+        structuredLog('info', 'Token file not found, nothing to delete.');
       } else {
-        console.error('Error deleting token file:', error);
+        structuredLog('error', 'Error deleting token file', { error });
       }
+    }
+    // Clear consent history
+    this._consentHistory = [];
+    try {
+      await require('fs').promises.unlink(this.config.consentStorePath);
+    } catch (err) {
+      // Silent fail
     }
   }
 }

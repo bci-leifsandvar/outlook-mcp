@@ -19,8 +19,6 @@ function maskPIIinObject(obj) {
   return obj;
 }
 
-module.exports.maskPII = maskPII;
-module.exports.maskPIIinObject = maskPIIinObject;
 /**
  * Input sanitization and escaping utilities for prompt injection defense
  */
@@ -53,6 +51,8 @@ function isSuspicious(input) {
 }
 
 module.exports = {
+  maskPII,
+  maskPIIinObject,
   sanitizeText,
   isSuspicious
 };
