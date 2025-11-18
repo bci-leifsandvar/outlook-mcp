@@ -83,8 +83,8 @@ class TokenStorage {
     if (!this.tokens || !this.tokens.expires_at) {
       return true; // No token or no expiry means it's effectively expired or invalid
     }
-    // Check if current time is past expiry time, considering a buffer
-    return Date.now() >= (this.tokens.expires_at - this.config.refreshTokenBuffer);
+    // Token is expired if now + buffer >= expires_at
+    return Date.now() + this.config.refreshTokenBuffer >= this.tokens.expires_at;
   }
 
   async getValidAccessToken() {
@@ -158,15 +158,19 @@ class TokenStorage {
                         }
                         this.tokens.expires_in = responseBody.expires_in;
                         this.tokens.expires_at = Date.now() + (responseBody.expires_in * 1000);
-                        // Preserve consent tracking
-                        if (!this.tokens.consent) {
-                          this.tokens.consent = {
-                            granted: true,
-                            timestamp: new Date().toISOString(),
-                            source: 'refresh',
-                            details: responseBody.scope || this.tokens.scope
-                          };
-                        }
+                        // Consent tracking (always set details as object)
+                        this.tokens.consent = {
+                          granted: true,
+                          timestamp: new Date().toISOString(),
+                          source: 'refresh',
+                          details: {
+                            scope: responseBody.scope || this.tokens.scope,
+                            grant_type: 'refresh_token',
+                            client_id: this.config.clientId,
+                            refresh_token: this.tokens.refresh_token,
+                            scopes: this.config.scopes
+                          }
+                        };
                         try {
                             await this._saveTokensToFile();
                             console.log('Access token refreshed and saved successfully.');

@@ -35,8 +35,6 @@
     "node": ">=14.0.0"
   },
   "jest": {
-    "setupFiles": [
-      "<rootDir>/test/setup.js"
-    ]
+    "setupFiles": ["<rootDir>/test/auth/jest.setup.js"]
   }
 }
