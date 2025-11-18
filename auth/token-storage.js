@@ -153,12 +153,20 @@ class TokenStorage {
                     const responseBody = JSON.parse(data);
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         this.tokens.access_token = responseBody.access_token;
-                        // Microsoft Graph API refresh tokens may or may not return a new refresh_token
                         if (responseBody.refresh_token) {
                             this.tokens.refresh_token = responseBody.refresh_token;
                         }
                         this.tokens.expires_in = responseBody.expires_in;
                         this.tokens.expires_at = Date.now() + (responseBody.expires_in * 1000);
+                        // Preserve consent tracking
+                        if (!this.tokens.consent) {
+                          this.tokens.consent = {
+                            granted: true,
+                            timestamp: new Date().toISOString(),
+                            source: 'refresh',
+                            details: responseBody.scope || this.tokens.scope
+                          };
+                        }
                         try {
                             await this._saveTokensToFile();
                             console.log('Access token refreshed and saved successfully.');
@@ -232,7 +240,13 @@ class TokenStorage {
                 expires_in: responseBody.expires_in,
                 expires_at: Date.now() + (responseBody.expires_in * 1000),
                 scope: responseBody.scope,
-                token_type: responseBody.token_type
+                token_type: responseBody.token_type,
+                consent: {
+                  granted: true,
+                  timestamp: new Date().toISOString(),
+                  source: 'oauth',
+                  details: responseBody.scope
+                }
               };
               try {
                 await this._saveTokensToFile();

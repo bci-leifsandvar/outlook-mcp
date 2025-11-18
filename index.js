@@ -26,8 +26,22 @@ const { folderTools } = require('./folder');
 const { rulesTools } = require('./rules');
 
 // Log startup information
-console.error(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
-console.error(`Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
+const { maskPIIinObject } = require('./utils/sanitize');
+function structuredLog(level, message, details = {}) {
+  // Mask PII in details
+  const maskedDetails = maskPIIinObject(details);
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...maskedDetails
+  };
+  // Output as JSON string for SIEM/monitoring compliance
+  console.error(JSON.stringify(entry));
+}
+
+structuredLog('info', `STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
+structuredLog('info', `Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
 
 // Combine all tools
 const TOOLS = [
@@ -39,8 +53,8 @@ const TOOLS = [
 ];
 
 // Debug: Print all registered tool names and count
-console.error('DEBUG: Registered tools:', TOOLS.map(t => t.name));
-console.error('DEBUG: Tool count:', TOOLS.length);
+structuredLog('debug', 'Registered tools', { tools: TOOLS.map(t => t.name) });
+structuredLog('debug', 'Tool count', { count: TOOLS.length });
 
 // Create server instance
 const server = new Server(
@@ -59,7 +73,7 @@ const server = new Server(
 
 // Register tools/list handler
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error('DEBUG: Handling tools/list request');
+  structuredLog('debug', 'Handling tools/list request');
   
   return {
     tools: TOOLS.map(tool => ({
@@ -75,7 +89,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
   const args = request.params.arguments || {};
   
-  console.error(`DEBUG: Executing tool: ${toolName}`);
+  structuredLog('debug', `Executing tool: ${toolName}`, { args });
   
   // Find the tool
   const tool = TOOLS.find(t => t.name === toolName);
@@ -93,12 +107,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     // Execute the tool handler
     const result = await tool.handler(args);
-    
+
     // Ensure result is in proper MCP format
     if (result && result.content) {
       return result;
     }
-    
+
     // Wrap result if needed
     return {
       content: [{
@@ -107,7 +121,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }]
     };
   } catch (error) {
-    console.error(`DEBUG: Tool execution error:`, error);
+    structuredLog('error', `Tool execution error: ${error.message}`, { toolName, error: error.stack });
     return {
       content: [{
         type: "text",
@@ -128,18 +142,18 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
   return { prompts: [] };
 });
 
-console.error('DEBUG: All request handlers registered');
+structuredLog('debug', 'All request handlers registered');
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  console.error('SIGTERM received but staying alive');
+  structuredLog('warn', 'SIGTERM received but staying alive');
 });
 
 // Start the server
 const transport = new StdioServerTransport();
 server.connect(transport)
-  .then(() => console.error(`${config.SERVER_NAME} connected and listening`))
+  .then(() => structuredLog('info', `${config.SERVER_NAME} connected and listening`))
   .catch(error => {
-    console.error(`Connection error: ${error.message}`);
+    structuredLog('error', `Connection error: ${error.message}`, { error: error.stack });
     process.exit(1);
   });
