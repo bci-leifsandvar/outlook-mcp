@@ -4,6 +4,12 @@ This repository is a fork. Any certifications, badges, or compliance claims from
 
 ## Security: Data Protection, Logging & Monitoring
 
+**Privacy Policy:**
+- See `PRIVACY-POLICY.md` for details on data collection, consent, and user rights.
+
+**Consent Tracking:**
+- User consent events (timestamp, scopes) are recorded in `~/.outlook-mcp-consent.json` for audit and compliance.
+
 **Token Encryption at Rest:**
 - All tokens are encrypted using AES-256-GCM before being saved to disk. The encryption key must be set via the `MCP_TOKEN_KEY` environment variable (64 hex characters).
 

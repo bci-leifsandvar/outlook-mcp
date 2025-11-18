@@ -21,6 +21,7 @@ pnpm-lock.yaml
 *.p12
 *.token.json
 .outlook-mcp-tokens.json
+.outlook-mcp-consent.json
 
 # Editor directories and files
 .idea/
