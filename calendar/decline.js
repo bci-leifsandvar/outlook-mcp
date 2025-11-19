@@ -15,10 +15,10 @@ async function handleDeclineEvent(args) {
   logSensitiveAction('declineEvent', args, 'unknown', isSuspicious(eventId));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
-  const { eventId, comment, confirm } = args;
+  const { eventId, comment, confirmationToken } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE && !confirm) {
+  if (SECURE_PROMPT_MODE) {
     // Already logged above
     const safeEventId = sanitizeText(eventId);
     if (isSuspicious(eventId)) {
@@ -30,13 +30,38 @@ async function handleDeclineEvent(args) {
         requiresConfirmation: false
       };
     }
-    return {
-      content: [{
-        type: "text",
-        text: `Are you sure you want to decline the event with ID: ${safeEventId}?\n\nReply with confirm=true to proceed.`
-      }],
-      requiresConfirmation: true
-    };
+    // Token-based confirmation logic
+    const crypto = require('crypto');
+    const actionKey = crypto.createHash('sha256').update(`${eventId}|${comment}`).digest('hex');
+    if (!confirmationToken) {
+      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
+      if (!global.__declineEventTokens) global.__declineEventTokens = {};
+      global.__declineEventTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
+      return {
+        content: [{
+          type: "text",
+          text:
+            `SECURE ACTION: Human confirmation required.\nEvent ID: ${safeEventId}` +
+            `\n\nAsk the user to input the following token to confirm event decline: ${token}\nIf the user does not provide this token, drop the request.`
+        }],
+        requiresConfirmation: true,
+        confirmationTokenRequired: true
+      };
+    } else {
+      const entry = global.__declineEventTokens && global.__declineEventTokens[actionKey];
+      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
+        return {
+          content: [{
+            type: "text",
+            text: "Invalid or expired confirmation token. Please start the process again."
+          }],
+          requiresConfirmation: true,
+          confirmationTokenRequired: true
+        };
+      }
+      delete global.__declineEventTokens[actionKey];
+      // Proceed to decline event
+    }
   }
 
   if (!eventId) {

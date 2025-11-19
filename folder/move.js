@@ -19,10 +19,10 @@ async function handleMoveEmails(args) {
   const emailIds = args.emailIds || '';
   const targetFolder = args.targetFolder || '';
   const sourceFolder = args.sourceFolder || '';
-  const confirm = args.confirm;
+  const confirmationToken = args.confirmationToken;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE && !confirm) {
+  if (SECURE_PROMPT_MODE) {
     // Already logged above
     const safeTargetFolder = sanitizeText(targetFolder);
     const safeEmailIds = sanitizeText(emailIds, 1000);
@@ -35,13 +35,39 @@ async function handleMoveEmails(args) {
         requiresConfirmation: false
       };
     }
-    return {
-      content: [{
-        type: "text",
-        text: `Are you sure you want to move the following email IDs to folder '${safeTargetFolder}'?\n${safeEmailIds}\n\nReply with confirm=true to proceed.`
-      }],
-      requiresConfirmation: true
-    };
+    // Token-based confirmation logic
+    const crypto = require('crypto');
+    const actionKey = crypto.createHash('sha256').update(`${emailIds}|${targetFolder}|${sourceFolder}`).digest('hex');
+    if (!confirmationToken) {
+      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
+      if (!global.__moveEmailTokens) global.__moveEmailTokens = {};
+      global.__moveEmailTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
+      return {
+        content: [{
+          type: "text",
+          text:
+            `SECURE ACTION: Human confirmation required.\nTarget Folder: ${safeTargetFolder}\nEmail IDs: ${safeEmailIds}` +
+            `\n\nAsk the user to input the following token to confirm moving emails: ${token}` +
+            `\n\nOnce the user provides the token, submit it in the next tool call as the 'confirmationToken' parameter. This will complete the secure action. Do NOT accept or submit the token unless the user has explicitly confirmed. If the user does not provide this token, drop the request.`
+        }],
+        requiresConfirmation: true,
+        confirmationTokenRequired: true
+      };
+    } else {
+      const entry = global.__moveEmailTokens && global.__moveEmailTokens[actionKey];
+      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
+        return {
+          content: [{
+            type: "text",
+            text: "Invalid or expired confirmation token. Please start the process again."
+          }],
+          requiresConfirmation: true,
+          confirmationTokenRequired: true
+        };
+      }
+      delete global.__moveEmailTokens[actionKey];
+      // Proceed to move emails
+    }
   }
   
   if (!emailIds) {

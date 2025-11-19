@@ -26,11 +26,11 @@ async function handleCreateRule(args) {
     markAsRead,
     isEnabled = true,
     sequence,
-    confirm
+    confirmationToken
   } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE && !confirm) {
+  if (SECURE_PROMPT_MODE) {
     // Already logged above
     const safeName = sanitizeText(name);
     const safeFrom = sanitizeText(fromAddresses || 'Any');
@@ -45,13 +45,38 @@ async function handleCreateRule(args) {
         requiresConfirmation: false
       };
     }
-    return {
-      content: [{
-        type: "text",
-        text: `Are you sure you want to create this rule?\nName: ${safeName}\nFrom: ${safeFrom}\nSubject Contains: ${safeSubject}\nHas Attachments: ${hasAttachments ? 'Yes' : 'No'}\nMove To Folder: ${safeMoveTo}\nMark As Read: ${markAsRead ? 'Yes' : 'No'}\n\nReply with confirm=true to proceed.`
-      }],
-      requiresConfirmation: true
-    };
+    // Token-based confirmation logic
+    const crypto = require('crypto');
+    const actionKey = crypto.createHash('sha256').update(`${name}|${fromAddresses}|${containsSubject}|${moveToFolder}|${markAsRead}|${isEnabled}|${sequence}`).digest('hex');
+    if (!confirmationToken) {
+      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
+      if (!global.__createRuleTokens) global.__createRuleTokens = {};
+      global.__createRuleTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
+      return {
+        content: [{
+          type: "text",
+          text:
+            `SECURE ACTION: Human confirmation required.\nName: ${safeName}\nFrom: ${safeFrom}\nSubject: ${safeSubject}\nMove to: ${safeMoveTo}` +
+            `\n\nAsk the user to input the following token to confirm rule creation: ${token}\nIf the user does not provide this token, drop the request.`
+        }],
+        requiresConfirmation: true,
+        confirmationTokenRequired: true
+      };
+    } else {
+      const entry = global.__createRuleTokens && global.__createRuleTokens[actionKey];
+      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
+        return {
+          content: [{
+            type: "text",
+            text: "Invalid or expired confirmation token. Please start the process again."
+          }],
+          requiresConfirmation: true,
+          confirmationTokenRequired: true
+        };
+      }
+      delete global.__createRuleTokens[actionKey];
+      // Proceed to create rule
+    }
   }
   
   // Add validation for sequence parameter

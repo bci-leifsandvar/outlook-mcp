@@ -17,14 +17,14 @@ async function handleCreateEvent(args) {
   require('../config').ensureConfigSafe();
   
   // Extract args SECOND
-  const { subject, start, end, attendees, body, confirm } = args;
+  const { subject, start, end, attendees, body, confirmationToken } = args;
   
   // Now we can use the variables - Log attempt (after variables are defined)
   logSensitiveAction('createEvent', args, 'unknown', [subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious));
   
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE && !confirm) {
+  if (SECURE_PROMPT_MODE) {
     // Already logged above
     // Sanitize and check for suspicious input
     const safeSubject = sanitizeText(subject);
@@ -40,13 +40,38 @@ async function handleCreateEvent(args) {
         requiresConfirmation: false
       };
     }
-    return {
-      content: [{
-        type: "text",
-        text: `Are you sure you want to create this event?\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}\n\nReply with confirm=true to proceed.`
-      }],
-      requiresConfirmation: true
-    };
+    // Token-based confirmation logic
+    const crypto = require('crypto');
+    const actionKey = crypto.createHash('sha256').update(`${subject}|${start}|${end}|${attendees}|${body}`).digest('hex');
+    if (!confirmationToken) {
+      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
+      if (!global.__createEventTokens) global.__createEventTokens = {};
+      global.__createEventTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
+      return {
+        content: [{
+          type: "text",
+          text:
+            `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}` +
+            `\n\nAsk the user to input the following token to confirm event creation: ${token}\nIf the user does not provide this token, drop the request.`
+        }],
+        requiresConfirmation: true,
+        confirmationTokenRequired: true
+      };
+    } else {
+      const entry = global.__createEventTokens && global.__createEventTokens[actionKey];
+      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
+        return {
+          content: [{
+            type: "text",
+            text: "Invalid or expired confirmation token. Please start the process again."
+          }],
+          requiresConfirmation: true,
+          confirmationTokenRequired: true
+        };
+      }
+      delete global.__createEventTokens[actionKey];
+      // Proceed to create event
+    }
   }
 
   if (!subject || !start || !end) {

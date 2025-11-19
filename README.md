@@ -228,6 +228,9 @@ To configure server behavior, you can edit `config.js` to change:
 2. **Restart Claude Desktop**: Close and reopen Claude Desktop to load the new MCP server
 3. **Start Authentication Server**: Open a terminal and run `npm run auth-server`
 4. **Authenticate**: In Claude Desktop, use the `authenticate` tool to get an OAuth URL
+
+**Confirmation Prompts:**
+For sensitive actions (such as sending email), you may be prompted to confirm before the action is completed. If you see a message asking "Reply with confirm=true to proceed," reply with `confirm=true` in your next tool call to continue.
 5. **Complete OAuth Flow**: Visit the URL in your browser and sign in with Microsoft
 6. **Start Using**: Once authenticated, you can use all the Outlook tools in Claude!
 

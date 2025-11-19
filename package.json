@@ -5,13 +5,12 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "auth-server": "node outlook-auth-server.js",
+    "auth-server": "node ./auth/outlook-auth-server.js",
     "test-mode": "set USE_TEST_MODE=true && node index.js",
     "mock-server": "node mock-graph-server.js",
     "inspect": "npx @modelcontextprotocol/inspector node index.js",
     "test": "jest"
   },
-  
   "keywords": [
     "claude",
     "outlook",
@@ -24,7 +23,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
     "dotenv": "^16.5.0",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.17.2",
@@ -35,6 +35,8 @@
     "node": ">=14.0.0"
   },
   "jest": {
-    "setupFiles": ["<rootDir>/test/auth/jest.setup.js"]
+    "setupFiles": [
+      "<rootDir>/test/auth/jest.setup.js"
+    ]
   }
 }
