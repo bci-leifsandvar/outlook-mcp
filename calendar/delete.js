@@ -18,8 +18,8 @@ async function handleDeleteEvent(args) {
   const { eventId, confirmationToken } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
+  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    // Already logged above
     const safeEventId = sanitizeText(eventId);
     if (isSuspicious(eventId)) {
       return {
@@ -30,36 +30,22 @@ async function handleDeleteEvent(args) {
         requiresConfirmation: false
       };
     }
-    // Token-based confirmation logic
-    const crypto = require('crypto');
-    const actionKey = crypto.createHash('sha256').update(`${eventId}`).digest('hex');
+    // Use secure-prompt utility
     if (!confirmationToken) {
-      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
-      if (!global.__deleteEventTokens) global.__deleteEventTokens = {};
-      global.__deleteEventTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
-      return {
-        content: [{
-          type: "text",
-          text:
-            `SECURE ACTION: Human confirmation required.\nEvent ID: ${safeEventId}` +
-            `\n\nAsk the user to input the following token to confirm event deletion: ${token}\nIf the user does not provide this token, drop the request.`
-        }],
-        requiresConfirmation: true,
-        confirmationTokenRequired: true
-      };
+      return promptForConfirmation({
+        actionType: 'deleteEvent',
+        fields: [eventId],
+        safeFields: [safeEventId],
+        globalTokenStore: '__deleteEventTokens',
+        promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${safeEventId}`
+      });
     } else {
-      const entry = global.__deleteEventTokens && global.__deleteEventTokens[actionKey];
-      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
-        return {
-          content: [{
-            type: "text",
-            text: "Invalid or expired confirmation token. Please start the process again."
-          }],
-          requiresConfirmation: true,
-          confirmationTokenRequired: true
-        };
-      }
-      delete global.__deleteEventTokens[actionKey];
+      const tokenResult = validateConfirmationToken({
+        fields: [eventId],
+        globalTokenStore: '__deleteEventTokens',
+        confirmationToken
+      });
+      if (tokenResult) return tokenResult;
       // Proceed to delete event
     }
   }

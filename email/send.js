@@ -38,7 +38,7 @@ async function handleSendEmail(args) {
   const sanitizeHtml = require('sanitize-html');
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE) {
-    // Sanitize and check for suspicious input
+    const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
     const safeSubject = sanitizeText(subject);
     const safeTo = sanitizeText(to);
     const safeCc = sanitizeText(cc);
@@ -52,42 +52,22 @@ async function handleSendEmail(args) {
         requiresConfirmation: false
       };
     }
-    // Token-based confirmation logic
+    // Use secure-prompt utility
     if (!confirmationToken) {
-      // Generate a random token and store it in memory for this action
-      const crypto = require('crypto');
-      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
-      if (!global.__sendEmailTokens) global.__sendEmailTokens = {};
-      // Use a hash of the email details as the key
-      const actionKey = crypto.createHash('sha256').update(`${to}|${cc}|${bcc}|${subject}|${body}`).digest('hex');
-      global.__sendEmailTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
-      return {
-        content: [{
-          type: "text",
-          text:
-            `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}` +
-            `\n\nAsk the user to input the following token to confirm sending: ${token}\nIf the user does not provide this token, drop the request.`
-        }],
-        requiresConfirmation: true,
-        confirmationTokenRequired: true
-      };
+      return promptForConfirmation({
+        actionType: 'sendEmail',
+        fields: [to, cc, bcc, subject, body],
+        safeFields: [safeTo, safeCc, safeBcc, safeSubject],
+        globalTokenStore: '__sendEmailTokens',
+        promptText: `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}`
+      });
     } else {
-      // Validate token
-      const crypto = require('crypto');
-      const actionKey = crypto.createHash('sha256').update(`${to}|${cc}|${bcc}|${subject}|${body}`).digest('hex');
-      const entry = global.__sendEmailTokens && global.__sendEmailTokens[actionKey];
-      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
-        return {
-          content: [{
-            type: "text",
-            text: "Invalid or expired confirmation token. Please start the process again."
-          }],
-          requiresConfirmation: true,
-          confirmationTokenRequired: true
-        };
-      }
-      // Token is valid, delete it so it can't be reused
-      delete global.__sendEmailTokens[actionKey];
+      const tokenResult = validateConfirmationToken({
+        fields: [to, cc, bcc, subject, body],
+        globalTokenStore: '__sendEmailTokens',
+        confirmationToken
+      });
+      if (tokenResult) return tokenResult;
       // Proceed to send
     }
   }

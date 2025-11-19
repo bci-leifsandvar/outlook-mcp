@@ -24,9 +24,8 @@ async function handleCreateEvent(args) {
   
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
+  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    // Already logged above
-    // Sanitize and check for suspicious input
     const safeSubject = sanitizeText(subject);
     const safeStart = sanitizeText(start?.dateTime || start);
     const safeEnd = sanitizeText(end?.dateTime || end);
@@ -40,36 +39,22 @@ async function handleCreateEvent(args) {
         requiresConfirmation: false
       };
     }
-    // Token-based confirmation logic
-    const crypto = require('crypto');
-    const actionKey = crypto.createHash('sha256').update(`${subject}|${start}|${end}|${attendees}|${body}`).digest('hex');
+    // Use secure-prompt utility
     if (!confirmationToken) {
-      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
-      if (!global.__createEventTokens) global.__createEventTokens = {};
-      global.__createEventTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
-      return {
-        content: [{
-          type: "text",
-          text:
-            `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}` +
-            `\n\nAsk the user to input the following token to confirm event creation: ${token}\nIf the user does not provide this token, drop the request.`
-        }],
-        requiresConfirmation: true,
-        confirmationTokenRequired: true
-      };
+      return promptForConfirmation({
+        actionType: 'createEvent',
+        fields: [subject, start, end, attendees, body],
+        safeFields: [safeSubject, safeStart, safeEnd, safeAttendees],
+        globalTokenStore: '__createEventTokens',
+        promptText: `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}`
+      });
     } else {
-      const entry = global.__createEventTokens && global.__createEventTokens[actionKey];
-      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
-        return {
-          content: [{
-            type: "text",
-            text: "Invalid or expired confirmation token. Please start the process again."
-          }],
-          requiresConfirmation: true,
-          confirmationTokenRequired: true
-        };
-      }
-      delete global.__createEventTokens[actionKey];
+      const tokenResult = validateConfirmationToken({
+        fields: [subject, start, end, attendees, body],
+        globalTokenStore: '__createEventTokens',
+        confirmationToken
+      });
+      if (tokenResult) return tokenResult;
       // Proceed to create event
     }
   }
