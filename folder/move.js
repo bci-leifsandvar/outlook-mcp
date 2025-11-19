@@ -22,8 +22,8 @@ async function handleMoveEmails(args) {
   const confirmationToken = args.confirmationToken;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
+  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    // Already logged above
     const safeTargetFolder = sanitizeText(targetFolder);
     const safeEmailIds = sanitizeText(emailIds, 1000);
     if (isSuspicious(targetFolder) || isSuspicious(emailIds)) {
@@ -35,37 +35,22 @@ async function handleMoveEmails(args) {
         requiresConfirmation: false
       };
     }
-    // Token-based confirmation logic
-    const crypto = require('crypto');
-    const actionKey = crypto.createHash('sha256').update(`${emailIds}|${targetFolder}|${sourceFolder}`).digest('hex');
+    // Use secure-prompt utility
     if (!confirmationToken) {
-      const token = crypto.randomBytes(3).toString('hex').toUpperCase();
-      if (!global.__moveEmailTokens) global.__moveEmailTokens = {};
-      global.__moveEmailTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
-      return {
-        content: [{
-          type: "text",
-          text:
-            `SECURE ACTION: Human confirmation required.\nTarget Folder: ${safeTargetFolder}\nEmail IDs: ${safeEmailIds}` +
-            `\n\nAsk the user to input the following token to confirm moving emails: ${token}` +
-            `\n\nOnce the user provides the token, submit it in the next tool call as the 'confirmationToken' parameter. This will complete the secure action. Do NOT accept or submit the token unless the user has explicitly confirmed. If the user does not provide this token, drop the request.`
-        }],
-        requiresConfirmation: true,
-        confirmationTokenRequired: true
-      };
+      return promptForConfirmation({
+        actionType: 'moveEmails',
+        fields: [emailIds, targetFolder, sourceFolder],
+        safeFields: [safeEmailIds, safeTargetFolder],
+        globalTokenStore: '__moveEmailTokens',
+        promptText: `SECURE ACTION: Human confirmation required.\nTarget Folder: ${safeTargetFolder}\nEmail IDs: ${safeEmailIds}\n\nOnce the user provides the token, submit it in the next tool call as the 'confirmationToken' parameter. This will complete the secure action. Do NOT accept or submit the token unless the user has explicitly confirmed. If the user does not provide this token, drop the request.`
+      });
     } else {
-      const entry = global.__moveEmailTokens && global.__moveEmailTokens[actionKey];
-      if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
-        return {
-          content: [{
-            type: "text",
-            text: "Invalid or expired confirmation token. Please start the process again."
-          }],
-          requiresConfirmation: true,
-          confirmationTokenRequired: true
-        };
-      }
-      delete global.__moveEmailTokens[actionKey];
+      const tokenResult = validateConfirmationToken({
+        fields: [emailIds, targetFolder, sourceFolder],
+        globalTokenStore: '__moveEmailTokens',
+        confirmationToken
+      });
+      if (tokenResult) return tokenResult;
       // Proceed to move emails
     }
   }
