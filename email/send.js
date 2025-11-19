@@ -54,13 +54,17 @@ async function handleSendEmail(args) {
     }
     // Use secure-prompt utility
     if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'sendEmail',
-        fields: [to, cc, bcc, subject, body],
-        safeFields: [safeTo, safeCc, safeBcc, safeSubject],
-        globalTokenStore: '__sendEmailTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}`
-      });
+      return {
+        content: [{
+          type: "text",
+          text:
+            `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}` +
+            `\n\nAsk the user to input the following token to confirm sending: ${token}` +
+            `\n\nOnce the user provides the token, submit it in the next tool call as the 'confirmationToken' parameter, using the following JSON codeblock format:\n\n\u0060\u0060\u0060json\n{\n  \"to\": \"${to}\",\n  \"subject\": \"${subject}\",\n  \"body\": \"${body}\",\n  \"confirmationToken\": \"${token}\"\n}\n\u0060\u0060\u0060\nThis will complete the secure action. Do NOT accept or submit the token unless the user has explicitly confirmed. If the user does not provide this token, drop the request.`
+        }],
+        requiresConfirmation: true,
+        confirmationTokenRequired: true
+      };
     } else {
       const tokenResult = validateConfirmationToken({
         fields: [to, cc, bcc, subject, body],
