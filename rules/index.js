@@ -1,8 +1,8 @@
 /**
  * Email rules management module for Outlook MCP server
  */
-const handleListRules = require('./list');
-const handleCreateRule = require('./create');
+const { handleListRules } = require('./list');
+const {handleCreateRule} = require('./create');
 
 // Import required utilities
 const { ensureAuthenticated } = require('../auth');

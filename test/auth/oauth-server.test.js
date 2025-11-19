@@ -2,7 +2,6 @@ const express = require('express');
 const request = require('supertest');
 const { setupOAuthRoutes, createAuthConfig } = require('../../auth/oauth-server');
 const TokenStorage = require('../../auth/token-storage');
-
 jest.mock('../../auth/token-storage'); // Mock TokenStorage class
 
 const mockAuthConfig = {
