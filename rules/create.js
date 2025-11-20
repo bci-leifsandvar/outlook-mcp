@@ -12,11 +12,10 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  // Log attempt (before confirmation)
-  logSensitiveAction('createRule', args, 'unknown', [name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
+  
   const {
     name,
     fromAddresses,
@@ -28,6 +27,10 @@ async function handleCreateRule(args) {
     sequence,
     confirmationToken
   } = args;
+  
+  // Log attempt (after variables are defined)
+  logSensitiveAction('createRule', args, 'unknown', [name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious));
+  
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE) {
@@ -301,4 +304,4 @@ async function createInboxRule(accessToken, ruleOptions) {
   }
 }
 
-module.exports = handleCreateRule;
+module.exports = { handleCreateRule };

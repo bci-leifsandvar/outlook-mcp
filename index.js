@@ -40,8 +40,12 @@ function structuredLog(level, message, details = {}) {
   console.error(JSON.stringify(entry));
 }
 
+
+// Inject secure action protocol onboarding message for Claude
+const SECURE_ACTION_PROTOCOL_MESSAGE = `SECURE ACTION PROTOCOL INSTRUCTION\n\nWhen you receive a message indicating \"SECURE ACTION: Human confirmation required\" and a token, you must:\n\n1. Prompt the user to input the provided token.\n2. Wait for the user’s response.\n3. Include the user’s input as confirmationToken in your next MCP request for this action.\n4. If the token is missing or incorrect, do not proceed and prompt again.\n\nExample:\n- Server:  \"SECURE ACTION: Human confirmation required. ... Ask the user to input the following token to confirm: F91D17 ...\"\n- Claude:  \"Please enter the security code: F91D17\"\n- User:  \"F91D17\"\n- Claude (next request):  { ..., \"confirmationToken\": \"F91D17\" }\n`;
 structuredLog('info', `STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
 structuredLog('info', `Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
+structuredLog('info', 'SECURE ACTION PROTOCOL MESSAGE', { onboarding: SECURE_ACTION_PROTOCOL_MESSAGE });
 
 // Combine all tools
 
@@ -72,7 +76,8 @@ structuredLog('debug', 'Tool count', { count: TOOLS.length });
 const server = new Server(
   {
     name: config.SERVER_NAME,
-    version: config.SERVER_VERSION
+    version: config.SERVER_VERSION,
+    onboarding: SECURE_ACTION_PROTOCOL_MESSAGE // Inject onboarding message into initial MCP context
   },
   {
     capabilities: {
