@@ -24,7 +24,7 @@ async function handleListFolders(args) {
     if (includeChildren) {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: formatFolderHierarchy(folders, includeItemCounts)
         }]
       };
@@ -32,7 +32,7 @@ async function handleListFolders(args) {
       // Otherwise, format as flat list
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: formatFolderList(folders, includeItemCounts)
         }]
       };
@@ -41,7 +41,7 @@ async function handleListFolders(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -49,7 +49,7 @@ async function handleListFolders(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error listing folders: ${error.message}`
       }]
     };
@@ -136,7 +136,7 @@ async function getAllFoldersHierarchy(accessToken, includeItemCounts) {
  */
 function formatFolderList(folders, includeItemCounts) {
   if (!folders || folders.length === 0) {
-    return "No folders found.";
+    return 'No folders found.';
   }
   
   // Sort folders alphabetically, with well-known folders first
@@ -193,7 +193,7 @@ function formatFolderList(folders, includeItemCounts) {
  */
 function formatFolderHierarchy(folders, includeItemCounts) {
   if (!folders || folders.length === 0) {
-    return "No folders found.";
+    return 'No folders found.';
   }
   
   // Build folder hierarchy

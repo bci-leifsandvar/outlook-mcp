@@ -24,7 +24,7 @@ async function handleListRules(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: formattedRules
       }]
     };
@@ -32,7 +32,7 @@ async function handleListRules(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -40,7 +40,7 @@ async function handleListRules(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error listing rules: ${error.message}`
       }]
     };

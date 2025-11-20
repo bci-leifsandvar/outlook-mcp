@@ -46,10 +46,10 @@ const mockData = {
 app.post('/oauth2/v2.0/token', (req, res) => {
   console.log('[MOCK] Token request received');
   res.json({
-    access_token: 'mock_access_token_' + Date.now(),
+    access_token: `mock_access_token_${Date.now()}`,
     token_type: 'Bearer',
     expires_in: 3600,
-    refresh_token: 'mock_refresh_token_' + Date.now(),
+    refresh_token: `mock_refresh_token_${Date.now()}`,
     scope: 'Mail.Read User.Read Calendars.Read'
   });
 });
@@ -139,7 +139,7 @@ app.get('/v1.0/me/events', (req, res) => {
 app.post('/v1.0/me/events', (req, res) => {
   console.log('[MOCK] Create calendar event:', req.body.subject);
   const newEvent = {
-    id: 'evt-' + Date.now(),
+    id: `evt-${Date.now()}`,
     ...req.body
   };
   mockData.events.push(newEvent);
@@ -159,7 +159,7 @@ app.get('/v1.0/me/mailFolders', (req, res) => {
 app.post('/v1.0/me/mailFolders', (req, res) => {
   console.log('[MOCK] Create mail folder:', req.body.displayName);
   const newFolder = {
-    id: 'folder-' + Date.now(),
+    id: `folder-${Date.now()}`,
     displayName: req.body.displayName,
     totalItemCount: 0,
     unreadItemCount: 0
@@ -181,7 +181,7 @@ app.get('/v1.0/me/mailFolders/inbox/messageRules', (req, res) => {
 app.post('/v1.0/me/mailFolders/inbox/messageRules', (req, res) => {
   console.log('[MOCK] Create inbox rule:', req.body.displayName);
   const newRule = {
-    id: 'rule-' + Date.now(),
+    id: `rule-${Date.now()}`,
     ...req.body
   };
   mockData.rules.push(newRule);

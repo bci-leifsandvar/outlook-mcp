@@ -24,7 +24,7 @@ function logSensitiveAction(action, args, user = 'unknown', suspicious = false) 
     args: maskedArgs,
     suspicious
   };
-  fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
+  fs.appendFileSync(LOG_PATH, `${JSON.stringify(entry)}\n`);
   try {
     fs.chmodSync(LOG_PATH, 0o600);
   } catch (e) {
@@ -41,11 +41,11 @@ function logSensitiveAction(action, args, user = 'unknown', suspicious = false) 
     suspiciousAttempts[key] = suspiciousAttempts[key].filter(ts => now - ts < ALERT_WINDOW_MS);
     if (suspiciousAttempts[key].length >= ALERT_THRESHOLD) {
       // Alert: log a special entry
-      fs.appendFileSync(LOG_PATH, JSON.stringify({
+      fs.appendFileSync(LOG_PATH, `${JSON.stringify({
         timestamp: new Date().toISOString(),
         alert: true,
         message: `ALERT: ${suspiciousAttempts[key].length} suspicious attempts for action ${action} by user ${user} in last 10 minutes.`
-      }) + '\n');
+      })}\n`);
       try {
         fs.chmodSync(LOG_PATH, 0o600);
       } catch (e) {

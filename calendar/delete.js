@@ -24,8 +24,8 @@ async function handleDeleteEvent(args) {
     if (isSuspicious(eventId)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in event ID. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in event ID. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -53,8 +53,8 @@ async function handleDeleteEvent(args) {
   if (!eventId) {
     return {
       content: [{
-        type: "text",
-        text: "Event ID is required to delete an event."
+        type: 'text',
+        text: 'Event ID is required to delete an event.'
       }]
     };
   }
@@ -71,7 +71,7 @@ async function handleDeleteEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Event with ID ${eventId} has been successfully deleted.`
       }]
     };
@@ -79,7 +79,7 @@ async function handleDeleteEvent(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -87,7 +87,7 @@ async function handleDeleteEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error deleting event: ${error.message}`
       }]
     };

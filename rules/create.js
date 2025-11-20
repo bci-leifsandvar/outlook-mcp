@@ -39,8 +39,8 @@ async function handleCreateRule(args) {
     if ([name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in rule fields. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in rule fields. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -54,7 +54,7 @@ async function handleCreateRule(args) {
       global.__createRuleTokens[actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text:
             `SECURE ACTION: Human confirmation required.\nName: ${safeName}\nFrom: ${safeFrom}\nSubject: ${safeSubject}\nMove to: ${safeMoveTo}` +
             `\n\nAsk the user to input the following token to confirm rule creation: ${token}\nIf the user does not provide this token, drop the request.`
@@ -67,8 +67,8 @@ async function handleCreateRule(args) {
       if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
         return {
           content: [{
-            type: "text",
-            text: "Invalid or expired confirmation token. Please start the process again."
+            type: 'text',
+            text: 'Invalid or expired confirmation token. Please start the process again.'
           }],
           requiresConfirmation: true,
           confirmationTokenRequired: true
@@ -83,8 +83,8 @@ async function handleCreateRule(args) {
   if (sequence !== undefined && (isNaN(sequence) || sequence < 1)) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Sequence must be a positive number greater than zero."
+        type: 'text', 
+        text: 'Sequence must be a positive number greater than zero.'
       }]
     };
   }
@@ -92,8 +92,8 @@ async function handleCreateRule(args) {
   if (!name) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Rule name is required."
+        type: 'text', 
+        text: 'Rule name is required.'
       }]
     };
   }
@@ -105,8 +105,8 @@ async function handleCreateRule(args) {
   if (!hasCondition) {
     return {
       content: [{ 
-        type: "text", 
-        text: "At least one condition is required. Specify fromAddresses, containsSubject, or hasAttachments."
+        type: 'text', 
+        text: 'At least one condition is required. Specify fromAddresses, containsSubject, or hasAttachments.'
       }]
     };
   }
@@ -114,8 +114,8 @@ async function handleCreateRule(args) {
   if (!hasAction) {
     return {
       content: [{ 
-        type: "text", 
-        text: "At least one action is required. Specify moveToFolder or markAsRead."
+        type: 'text', 
+        text: 'At least one action is required. Specify moveToFolder or markAsRead.'
       }]
     };
   }
@@ -145,7 +145,7 @@ async function handleCreateRule(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: responseText
       }]
     };
@@ -153,7 +153,7 @@ async function handleCreateRule(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -161,7 +161,7 @@ async function handleCreateRule(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error creating rule: ${error.message}`
       }]
     };

@@ -15,8 +15,8 @@ async function handleCancelEvent(args) {
   if (!eventId) {
     return {
       content: [{
-        type: "text",
-        text: "Event ID is required to cancel an event."
+        type: 'text',
+        text: 'Event ID is required to cancel an event.'
       }]
     };
   }
@@ -30,7 +30,7 @@ async function handleCancelEvent(args) {
 
     // Request body
     const body = {
-      comment: comment || "Cancelled via API"
+      comment: comment || 'Cancelled via API'
     };
 
     // Make API call
@@ -38,7 +38,7 @@ async function handleCancelEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Event with ID ${eventId} has been successfully cancelled.`
       }]
     };
@@ -46,7 +46,7 @@ async function handleCancelEvent(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -54,7 +54,7 @@ async function handleCancelEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error cancelling event: ${error.message}`
       }]
     };

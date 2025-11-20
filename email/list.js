@@ -12,7 +12,7 @@ const { resolveFolderPath } = require('./folder-utils');
  * @returns {object} - MCP response
  */
 async function handleListEmails(args) {
-  const folder = args.folder || "inbox";
+  const folder = args.folder || 'inbox';
   const requestedCount = args.count || 10;
   
   try {
@@ -35,7 +35,7 @@ async function handleListEmails(args) {
     if (!response.value || response.value.length === 0) {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: `No emails found in ${folder}.`
         }]
       };
@@ -48,11 +48,11 @@ async function handleListEmails(args) {
       const readStatus = email.isRead ? '' : '[UNREAD] ';
       
       return `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${email.id}\n`;
-    }).join("\n");
+    }).join('\n');
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Found ${response.value.length} emails in ${folder}:\n\n${emailList}`
       }]
     };
@@ -60,7 +60,7 @@ async function handleListEmails(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -68,7 +68,7 @@ async function handleListEmails(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error listing emails: ${error.message}`
       }]
     };

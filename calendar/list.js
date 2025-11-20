@@ -18,7 +18,7 @@ async function handleListEvents(args) {
     const accessToken = await ensureAuthenticated();
     
     // Build API endpoint
-    let endpoint = 'me/events';
+    const endpoint = 'me/events';
     
     // Add query parameters
     const queryParams = {
@@ -34,8 +34,8 @@ async function handleListEvents(args) {
     if (!response.value || response.value.length === 0) {
       return {
         content: [{ 
-          type: "text", 
-          text: "No calendar events found."
+          type: 'text', 
+          text: 'No calendar events found.'
         }]
       };
     }
@@ -47,11 +47,11 @@ async function handleListEvents(args) {
       const location = event.location.displayName || 'No location';
       
       return `${index + 1}. ${event.subject} - Location: ${location}\nStart: ${startDate}\nEnd: ${endDate}\nSubject: ${event.subject}\nSummary: ${event.bodyPreview}\nID: ${event.id}\n`;
-    }).join("\n");
+    }).join('\n');
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Found ${response.value.length} events:\n\n${eventList}`
       }]
     };
@@ -59,7 +59,7 @@ async function handleListEvents(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -67,7 +67,7 @@ async function handleListEvents(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error listing events: ${error.message}`
       }]
     };

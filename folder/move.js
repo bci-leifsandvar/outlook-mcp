@@ -29,8 +29,8 @@ async function handleMoveEmails(args) {
     if (isSuspicious(targetFolder) || isSuspicious(emailIds)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in folder or email IDs. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in folder or email IDs. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -58,8 +58,8 @@ async function handleMoveEmails(args) {
   if (!emailIds) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Email IDs are required. Please provide a comma-separated list of email IDs to move."
+        type: 'text', 
+        text: 'Email IDs are required. Please provide a comma-separated list of email IDs to move.'
       }]
     };
   }
@@ -67,8 +67,8 @@ async function handleMoveEmails(args) {
   if (!targetFolder) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Target folder name is required."
+        type: 'text', 
+        text: 'Target folder name is required.'
       }]
     };
   }
@@ -83,8 +83,8 @@ async function handleMoveEmails(args) {
     if (ids.length === 0) {
       return {
         content: [{ 
-          type: "text", 
-          text: "No valid email IDs provided."
+          type: 'text', 
+          text: 'No valid email IDs provided.'
         }]
       };
     }
@@ -94,7 +94,7 @@ async function handleMoveEmails(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: result.message
       }]
     };
@@ -102,7 +102,7 @@ async function handleMoveEmails(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -110,7 +110,7 @@ async function handleMoveEmails(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error moving emails: ${error.message}`
       }]
     };
@@ -180,7 +180,7 @@ async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, sourc
       const maxErrors = Math.min(results.failed.length, 3);
       for (let i = 0; i < maxErrors; i++) {
         const failure = results.failed[i];
-        message += `\n- Email ${i+1}: ${failure.error}`;
+        message += `\n- Email ${i + 1}: ${failure.error}`;
       }
       
       // If there are more errors, just mention the count

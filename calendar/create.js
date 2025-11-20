@@ -33,8 +33,8 @@ async function handleCreateEvent(args) {
     if ([subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in event fields. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in event fields. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -62,8 +62,8 @@ async function handleCreateEvent(args) {
   if (!subject || !start || !end) {
     return {
       content: [{
-        type: "text",
-        text: "Subject, start, and end times are required to create an event."
+        type: 'text',
+        text: 'Subject, start, and end times are required to create an event.'
       }]
     };
   }
@@ -73,15 +73,15 @@ async function handleCreateEvent(args) {
     const accessToken = await ensureAuthenticated();
 
     // Build API endpoint
-    const endpoint = `me/events`;
+    const endpoint = 'me/events';
 
     // Request body
     const bodyContent = {
       subject,
       start: { dateTime: start.dateTime || start, timeZone: start.timeZone || DEFAULT_TIMEZONE },
       end: { dateTime: end.dateTime || end, timeZone: end.timeZone || DEFAULT_TIMEZONE },
-      attendees: attendees?.map(email => ({ emailAddress: { address: email }, type: "required" })),
-      body: { contentType: "HTML", content: body || "" }
+      attendees: attendees?.map(email => ({ emailAddress: { address: email }, type: 'required' })),
+      body: { contentType: 'HTML', content: body || '' }
     };
 
     // Make API call
@@ -89,7 +89,7 @@ async function handleCreateEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Event '${subject}' has been successfully created.`
       }]
     };
@@ -97,7 +97,7 @@ async function handleCreateEvent(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -105,7 +105,7 @@ async function handleCreateEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error creating event: ${error.message}`
       }]
     };

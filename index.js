@@ -8,14 +8,14 @@ if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING) {
  * A Model Context Protocol server that provides access to
  * Microsoft Outlook through the Microsoft Graph API.
  */
-const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
-const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { 
   ListToolsRequestSchema, 
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ListPromptsRequestSchema
-} = require("@modelcontextprotocol/sdk/types.js");
+} = require('@modelcontextprotocol/sdk/types.js');
 const config = require('./config');
 
 // Import module tools
@@ -97,7 +97,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (!tool) {
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Tool '${toolName}' not found`
       }],
       isError: true
@@ -116,7 +116,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // Wrap result if needed
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
       }]
     };
@@ -124,7 +124,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     structuredLog('error', `Tool execution error: ${error.message}`, { toolName, error: error.stack });
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error executing tool '${toolName}': ${error.message}`
       }],
       isError: true

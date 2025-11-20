@@ -24,8 +24,8 @@ async function handleDeclineEvent(args) {
     if (isSuspicious(eventId)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in event ID. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in event ID. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -53,8 +53,8 @@ async function handleDeclineEvent(args) {
   if (!eventId) {
     return {
       content: [{
-        type: "text",
-        text: "Event ID is required to decline an event."
+        type: 'text',
+        text: 'Event ID is required to decline an event.'
       }]
     };
   }
@@ -68,7 +68,7 @@ async function handleDeclineEvent(args) {
 
     // Request body
     const body = {
-      comment: comment || "Declined via API"
+      comment: comment || 'Declined via API'
     };
 
     // Make API call
@@ -76,7 +76,7 @@ async function handleDeclineEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Event with ID ${eventId} has been successfully declined.`
       }]
     };
@@ -84,7 +84,7 @@ async function handleDeclineEvent(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -92,7 +92,7 @@ async function handleDeclineEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error declining event: ${error.message}`
       }]
     };

@@ -8,11 +8,11 @@ const TokenStorage = require('./token-storage'); // Assuming TokenStorage is in 
 // HTML templates
 function escapeHtml(unsafe) {
   return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 const templates = {
@@ -68,7 +68,7 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
   }
 
   if (!(tokenStorage instanceof TokenStorage)) {
-    console.error("Error: tokenStorage is not an instance of TokenStorage. OAuth routes will not function correctly.");
+    console.error('Error: tokenStorage is not an instance of TokenStorage. OAuth routes will not function correctly.');
     // Optionally, you could throw an error here or disable the routes
     // throw new Error("Invalid tokenStorage provided to setupOAuthRoutes");
   }
@@ -87,7 +87,7 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
     // Since this is a module, actual session handling is outside its direct scope,
     // but it's crucial for the consuming application to handle state verification.
 
-    const authorizationUrl = `${authConfig.authEndpoint}?` +
+    const authorizationUrl = `${authConfig.authEndpoint}?${ 
       querystring.stringify({
         client_id: authConfig.clientId,
         response_type: 'code',
@@ -95,7 +95,7 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
         scope: authConfig.scopes.join(' '),
         response_mode: 'query',
         state: state
-      });
+      })}`;
     res.redirect(authorizationUrl);
   });
 
@@ -126,8 +126,8 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
     // The new sse-server.js also doesn't show session management for state.
     // So, we will make the check for presence mandatory as per Gemini's suggestion.
     if (!state) {
-        console.error("OAuth callback received without a 'state' parameter. Rejecting request to prevent potential CSRF attack.");
-        return res.status(400).send(templates.authError('Missing State Parameter', 'The state parameter was missing from the OAuth callback. This is a security risk. Please try authenticating again.'));
+      console.error("OAuth callback received without a 'state' parameter. Rejecting request to prevent potential CSRF attack.");
+      return res.status(400).send(templates.authError('Missing State Parameter', 'The state parameter was missing from the OAuth callback. This is a security risk. Please try authenticating again.'));
     }
     // Further validation of the state's VALUE (e.g., req.session.oauthState === state) is the responsibility
     // of the application integrating this module, as session management is outside this module's scope.
@@ -171,7 +171,7 @@ function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
 
 module.exports = {
   setupOAuthRoutes,
-  createAuthConfig,
+  createAuthConfig
   // Exporting templates for potential direct use or testing, though not typical
   // templates
 };

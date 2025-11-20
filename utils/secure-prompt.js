@@ -16,7 +16,7 @@ function promptForConfirmation({ actionType, fields, safeFields, globalTokenStor
     global[globalTokenStore][actionKey] = { token, expires: Date.now() + 5 * 60 * 1000 };
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `${promptText}\n\nAsk the user to input the following token to confirm: ${token}\nIf the user does not provide this token, drop the request.`
       }],
       requiresConfirmation: true,
@@ -32,8 +32,8 @@ function validateConfirmationToken({ fields, globalTokenStore, confirmationToken
   if (!entry || entry.token !== confirmationToken || Date.now() > entry.expires) {
     return {
       content: [{
-        type: "text",
-        text: "Invalid or expired confirmation token. Please start the process again."
+        type: 'text',
+        text: 'Invalid or expired confirmation token. Please start the process again.'
       }],
       requiresConfirmation: true,
       confirmationTokenRequired: true

@@ -19,30 +19,30 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
       if (path.includes('/messages/')) {
         // Single email response
         return {
-          id: "simulated-email-id",
-          subject: "Simulated Email Subject",
+          id: 'simulated-email-id',
+          subject: 'Simulated Email Subject',
           from: {
             emailAddress: {
-              name: "Simulated Sender",
-              address: "sender@example.com"
+              name: 'Simulated Sender',
+              address: 'sender@example.com'
             }
           },
           toRecipients: [{
             emailAddress: {
-              name: "Recipient Name",
-              address: "recipient@example.com"
+              name: 'Recipient Name',
+              address: 'recipient@example.com'
             }
           }],
           ccRecipients: [],
           bccRecipients: [],
           receivedDateTime: new Date().toISOString(),
-          bodyPreview: "This is a simulated email preview...",
+          bodyPreview: 'This is a simulated email preview...',
           body: {
-            contentType: "text",
+            contentType: 'text',
             content: "This is the full content of the simulated email. Since we can't connect to the real Microsoft Graph API, we're returning this placeholder content instead."
           },
           hasAttachments: false,
-          importance: "normal",
+          importance: 'normal',
           isRead: false,
           internetMessageHeaders: []
         };
@@ -51,69 +51,69 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
         return {
           value: [
             {
-              id: "simulated-email-1",
-              subject: "Important Meeting Tomorrow",
+              id: 'simulated-email-1',
+              subject: 'Important Meeting Tomorrow',
               from: {
                 emailAddress: {
-                  name: "John Doe",
-                  address: "john@example.com"
+                  name: 'John Doe',
+                  address: 'john@example.com'
                 }
               },
               toRecipients: [{
                 emailAddress: {
-                  name: "You",
-                  address: "you@example.com"
+                  name: 'You',
+                  address: 'you@example.com'
                 }
               }],
               ccRecipients: [],
               receivedDateTime: new Date().toISOString(),
               bodyPreview: "Let's discuss the project status...",
               hasAttachments: false,
-              importance: "high",
+              importance: 'high',
               isRead: false
             },
             {
-              id: "simulated-email-2",
-              subject: "Weekly Report",
+              id: 'simulated-email-2',
+              subject: 'Weekly Report',
               from: {
                 emailAddress: {
-                  name: "Jane Smith",
-                  address: "jane@example.com"
+                  name: 'Jane Smith',
+                  address: 'jane@example.com'
                 }
               },
               toRecipients: [{
                 emailAddress: {
-                  name: "You",
-                  address: "you@example.com"
+                  name: 'You',
+                  address: 'you@example.com'
                 }
               }],
               ccRecipients: [],
               receivedDateTime: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-              bodyPreview: "Please find attached the weekly report...",
+              bodyPreview: 'Please find attached the weekly report...',
               hasAttachments: true,
-              importance: "normal",
+              importance: 'normal',
               isRead: true
             },
             {
-              id: "simulated-email-3",
-              subject: "Question about the project",
+              id: 'simulated-email-3',
+              subject: 'Question about the project',
               from: {
                 emailAddress: {
-                  name: "Bob Johnson",
-                  address: "bob@example.com"
+                  name: 'Bob Johnson',
+                  address: 'bob@example.com'
                 }
               },
               toRecipients: [{
                 emailAddress: {
-                  name: "You",
-                  address: "you@example.com"
+                  name: 'You',
+                  address: 'you@example.com'
                 }
               }],
               ccRecipients: [],
               receivedDateTime: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-              bodyPreview: "I had a question about the timeline...",
+              bodyPreview: 'I had a question about the timeline...',
               hasAttachments: false,
-              importance: "normal",
+              importance: 'normal',
               isRead: false
             }
           ]
@@ -123,10 +123,10 @@ function simulateGraphAPIResponse(method, path, data, queryParams) {
       // Simulate a mail folders response
       return {
         value: [
-          { id: "inbox", displayName: "Inbox" },
-          { id: "drafts", displayName: "Drafts" },
-          { id: "sentItems", displayName: "Sent Items" },
-          { id: "deleteditems", displayName: "Deleted Items" }
+          { id: 'inbox', displayName: 'Inbox' },
+          { id: 'drafts', displayName: 'Drafts' },
+          { id: 'sentItems', displayName: 'Sent Items' },
+          { id: 'deleteditems', displayName: 'Deleted Items' }
         ]
       };
     }

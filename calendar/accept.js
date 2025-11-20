@@ -24,8 +24,8 @@ async function handleAcceptEvent(args) {
     if (isSuspicious(eventId)) {
       return {
         content: [{
-          type: "text",
-          text: "Suspicious input detected in event ID. Action blocked."
+          type: 'text',
+          text: 'Suspicious input detected in event ID. Action blocked.'
         }],
         requiresConfirmation: false
       };
@@ -53,8 +53,8 @@ async function handleAcceptEvent(args) {
   if (!eventId) {
     return {
       content: [{
-        type: "text",
-        text: "Event ID is required to accept an event."
+        type: 'text',
+        text: 'Event ID is required to accept an event.'
       }]
     };
   }
@@ -68,7 +68,7 @@ async function handleAcceptEvent(args) {
 
     // Request body
     const body = {
-      comment: comment || "Accepted via API"
+      comment: comment || 'Accepted via API'
     };
 
     // Make API call
@@ -76,7 +76,7 @@ async function handleAcceptEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Event with ID ${eventId} has been successfully accepted.`
       }]
     };
@@ -84,7 +84,7 @@ async function handleAcceptEvent(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{
-          type: "text",
+          type: 'text',
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -92,7 +92,7 @@ async function handleAcceptEvent(args) {
 
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: `Error accepting event: ${error.message}`
       }]
     };

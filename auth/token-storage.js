@@ -17,37 +17,37 @@ const https = require('https');
 const querystring = require('querystring');
 
 class TokenStorage {
-    // Consent tracking methods
-    async _loadConsentHistory() {
-      try {
-        const data = await require('fs').promises.readFile(this.config.consentStorePath, 'utf8');
-        this._consentHistory = JSON.parse(data);
-      } catch (err) {
-        this._consentHistory = [];
-      }
+  // Consent tracking methods
+  async _loadConsentHistory() {
+    try {
+      const data = await require('fs').promises.readFile(this.config.consentStorePath, 'utf8');
+      this._consentHistory = JSON.parse(data);
+    } catch (err) {
+      this._consentHistory = [];
     }
+  }
 
-    async _saveConsentHistory() {
-      try {
-        await require('fs').promises.writeFile(this.config.consentStorePath, JSON.stringify(this._consentHistory, null, 2), 'utf8');
-      } catch (err) {
-        // Silent fail
-      }
+  async _saveConsentHistory() {
+    try {
+      await require('fs').promises.writeFile(this.config.consentStorePath, JSON.stringify(this._consentHistory, null, 2), 'utf8');
+    } catch (err) {
+      // Silent fail
     }
+  }
 
-    async recordConsent(scopes, source = 'oauth') {
-      const event = {
-        timestamp: new Date().toISOString(),
-        scopes,
-        source
-      };
-      this._consentHistory.push(event);
-      await this._saveConsentHistory();
-    }
+  async recordConsent(scopes, source = 'oauth') {
+    const event = {
+      timestamp: new Date().toISOString(),
+      scopes,
+      source
+    };
+    this._consentHistory.push(event);
+    await this._saveConsentHistory();
+  }
 
-    getConsentHistory() {
-      return this._consentHistory;
-    }
+  getConsentHistory() {
+    return this._consentHistory;
+  }
   constructor(config) {
     this.config = {
       tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-tokens.json'),
@@ -114,9 +114,9 @@ class TokenStorage {
       return this.tokens;
     }
     if (!this._loadPromise) {
-        this._loadPromise = this._loadTokensFromFile().finally(() => {
-            this._loadPromise = null; // Reset promise once completed
-        });
+      this._loadPromise = this._loadTokensFromFile().finally(() => {
+        this._loadPromise = null; // Reset promise once completed
+      });
     }
     return this._loadPromise;
   }
@@ -169,8 +169,8 @@ class TokenStorage {
 
     // Prevent multiple concurrent refresh attempts
     if (this._refreshPromise) {
-        structuredLog('info', 'Refresh already in progress, returning existing promise.');
-        return this._refreshPromise.then(tokens => tokens.access_token);
+      structuredLog('info', 'Refresh already in progress, returning existing promise.');
+      return this._refreshPromise.then(tokens => tokens.access_token);
     }
 
     structuredLog('info', 'Attempting to refresh access token...');
@@ -191,65 +191,65 @@ class TokenStorage {
     };
 
     this._refreshPromise = new Promise((resolve, reject) => {
-        const req = https.request(this.config.tokenEndpoint, requestOptions, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', async () => {
-                try {
-                    const responseBody = JSON.parse(data);
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        this.tokens.access_token = responseBody.access_token;
-                        if (responseBody.refresh_token) {
-                            this.tokens.refresh_token = responseBody.refresh_token;
-                        }
-                        this.tokens.expires_in = responseBody.expires_in;
-                        this.tokens.expires_at = Date.now() + (responseBody.expires_in * 1000);
-                        // Consent tracking (always set details as object)
-                        this.tokens.consent = {
-                          granted: true,
-                          timestamp: new Date().toISOString(),
-                          source: 'refresh',
-                          details: {
-                            scope: responseBody.scope || this.tokens.scope,
-                            grant_type: 'refresh_token',
-                            client_id: this.config.clientId,
-                            refresh_token: this.tokens.refresh_token,
-                            scopes: this.config.scopes
-                          }
-                        };
-                        // Record consent event
-                        await this.recordConsent((responseBody.scope || this.tokens.scope || '').split(' '), 'refresh');
-                        try {
-                            await this._saveTokensToFile();
-                            structuredLog('info', 'Access token refreshed and saved successfully.');
-                            resolve(this.tokens);
-                        } catch (saveError) {
-                            structuredLog('error', 'Failed to save refreshed tokens', { error: saveError });
-                            // Even if save fails, tokens are updated in memory.
-                            // Depending on desired strictness, could reject here.
-                            // For now, resolve with in-memory tokens but log critical error.
-                            // Or, to be stricter and align with re-throwing:
-                            reject(new Error(`Access token refreshed but failed to save: ${saveError.message}`));
-                        }
-                    } else {
-                        structuredLog('error', 'Error refreshing token', { responseBody });
-                        reject(new Error(responseBody.error_description || `Token refresh failed with status ${res.statusCode}`));
-                    }
-                } catch (e) { // Catch any error during parsing or saving
-                    structuredLog('error', 'Error processing refresh token response or saving tokens', { error: e });
-                    reject(e);
-                } finally {
-                    this._refreshPromise = null; // Clear promise after completion
+      const req = https.request(this.config.tokenEndpoint, requestOptions, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', async () => {
+          try {
+            const responseBody = JSON.parse(data);
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              this.tokens.access_token = responseBody.access_token;
+              if (responseBody.refresh_token) {
+                this.tokens.refresh_token = responseBody.refresh_token;
+              }
+              this.tokens.expires_in = responseBody.expires_in;
+              this.tokens.expires_at = Date.now() + (responseBody.expires_in * 1000);
+              // Consent tracking (always set details as object)
+              this.tokens.consent = {
+                granted: true,
+                timestamp: new Date().toISOString(),
+                source: 'refresh',
+                details: {
+                  scope: responseBody.scope || this.tokens.scope,
+                  grant_type: 'refresh_token',
+                  client_id: this.config.clientId,
+                  refresh_token: this.tokens.refresh_token,
+                  scopes: this.config.scopes
                 }
-            });
+              };
+              // Record consent event
+              await this.recordConsent((responseBody.scope || this.tokens.scope || '').split(' '), 'refresh');
+              try {
+                await this._saveTokensToFile();
+                structuredLog('info', 'Access token refreshed and saved successfully.');
+                resolve(this.tokens);
+              } catch (saveError) {
+                structuredLog('error', 'Failed to save refreshed tokens', { error: saveError });
+                // Even if save fails, tokens are updated in memory.
+                // Depending on desired strictness, could reject here.
+                // For now, resolve with in-memory tokens but log critical error.
+                // Or, to be stricter and align with re-throwing:
+                reject(new Error(`Access token refreshed but failed to save: ${saveError.message}`));
+              }
+            } else {
+              structuredLog('error', 'Error refreshing token', { responseBody });
+              reject(new Error(responseBody.error_description || `Token refresh failed with status ${res.statusCode}`));
+            }
+          } catch (e) { // Catch any error during parsing or saving
+            structuredLog('error', 'Error processing refresh token response or saving tokens', { error: e });
+            reject(e);
+          } finally {
+            this._refreshPromise = null; // Clear promise after completion
+          }
         });
-        req.on('error', (error) => {
-            structuredLog('error', 'HTTP error during token refresh', { error });
-            reject(error);
-            this._refreshPromise = null; // Clear promise on error
-        });
-        req.write(postData);
-        req.end();
+      });
+      req.on('error', (error) => {
+        structuredLog('error', 'HTTP error during token refresh', { error });
+        reject(error);
+        this._refreshPromise = null; // Clear promise on error
+      });
+      req.write(postData);
+      req.end();
     });
 
     return this._refreshPromise.then(tokens => tokens.access_token);
@@ -258,7 +258,7 @@ class TokenStorage {
 
   async exchangeCodeForTokens(authCode) {
     if (!this.config.clientId || !this.config.clientSecret) {
-        throw new Error("Client ID or Client Secret is not configured. Cannot exchange code for tokens.");
+      throw new Error('Client ID or Client Secret is not configured. Cannot exchange code for tokens.');
     }
     structuredLog('info', 'Exchanging authorization code for tokens...');
     const postData = querystring.stringify({

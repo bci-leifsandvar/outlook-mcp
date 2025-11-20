@@ -17,8 +17,8 @@ async function handleMarkAsRead(args) {
   if (!emailId) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Email ID is required."
+        type: 'text', 
+        text: 'Email ID is required.'
       }]
     };
   }
@@ -41,7 +41,7 @@ async function handleMarkAsRead(args) {
       return {
         content: [
           {
-            type: "text",
+            type: 'text',
             text: `Email successfully marked as ${status}.`
           }
         ]
@@ -54,17 +54,17 @@ async function handleMarkAsRead(args) {
         return {
           content: [
             {
-              type: "text",
-              text: `The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID.`
+              type: 'text',
+              text: 'The email ID seems invalid or doesn\'t belong to your mailbox. Please try with a different email ID.'
             }
           ]
         };
-      } else if (error.message.includes("UNAUTHORIZED")) {
+      } else if (error.message.includes('UNAUTHORIZED')) {
         return {
           content: [
             {
-              type: "text",
-              text: "Authentication failed. Please re-authenticate and try again."
+              type: 'text',
+              text: 'Authentication failed. Please re-authenticate and try again.'
             }
           ]
         };
@@ -72,7 +72,7 @@ async function handleMarkAsRead(args) {
         return {
           content: [
             {
-              type: "text",
+              type: 'text',
               text: `Failed to mark email as ${isRead ? 'read' : 'unread'}: ${error.message}`
             }
           ]
@@ -83,7 +83,7 @@ async function handleMarkAsRead(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -91,7 +91,7 @@ async function handleMarkAsRead(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error accessing email: ${error.message}`
       }]
     };

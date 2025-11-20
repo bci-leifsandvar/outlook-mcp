@@ -21,12 +21,12 @@ const server = net.createServer((socket) => {
   // Handle incoming data, split on newlines
   socket.on('data', (data) => {
     buffer += data.toString();
-    let lines = buffer.split(/\r?\n/);
+    const lines = buffer.split(/\r?\n/);
     buffer = lines.pop(); // Save incomplete line
     for (const line of lines) {
       if (line.trim()) {
         console.error(`[TCP] Received from client: ${line.trim()}`);
-        mcpProcess.stdin.write(line.trim() + '\n');
+        mcpProcess.stdin.write(`${line.trim()}\n`);
       }
     }
   });
@@ -35,7 +35,7 @@ const server = net.createServer((socket) => {
   let mcpBuffer = '';
   mcpProcess.stdout.on('data', (data) => {
     mcpBuffer += data.toString();
-    let lines = mcpBuffer.split(/\r?\n/);
+    const lines = mcpBuffer.split(/\r?\n/);
     mcpBuffer = lines.pop();
     for (const line of lines) {
       if (line.trim()) {
@@ -44,7 +44,7 @@ const server = net.createServer((socket) => {
         // Write to all connected sockets
         for (const s of sockets) {
           if (!s.destroyed) {
-            s.write(line.trim() + '\n');
+            s.write(`${line.trim()}\n`);
           }
         }
       }

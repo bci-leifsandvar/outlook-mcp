@@ -83,7 +83,7 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
         }
         
         if (queryString) {
-          queryString = '?' + queryString;
+          queryString = `?${queryString}`;
         }
         
         structuredLog('debug', 'Graph API query string', { queryString });

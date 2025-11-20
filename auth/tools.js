@@ -11,7 +11,7 @@ const tokenManager = require('./token-manager');
 async function handleAbout() {
   return {
     content: [{
-      type: "text",
+      type: 'text',
       text: `📧 MODULAR Outlook Assistant MCP Server v${config.SERVER_VERSION} 📧\n\nProvides access to Microsoft Outlook email, calendar, and contacts through Microsoft Graph API.\nImplemented with a modular architecture for improved maintainability.`
     }]
   };
@@ -32,7 +32,7 @@ async function handleAuthenticate(args) {
     
     return {
       content: [{
-        type: "text",
+        type: 'text',
         text: 'Successfully authenticated with Microsoft Graph API (test mode)'
       }]
     };
@@ -43,7 +43,7 @@ async function handleAuthenticate(args) {
   
   return {
     content: [{
-      type: "text",
+      type: 'text',
       text: `Authentication required. Please visit the following URL to authenticate with Microsoft: ${authUrl}\n\nAfter authentication, you will be redirected back to this application.`
     }]
   };
@@ -63,7 +63,7 @@ async function handleCheckAuthStatus() {
   if (!tokens || !tokens.access_token) {
     console.error('[CHECK-AUTH-STATUS] No valid access token found');
     return {
-      content: [{ type: "text", text: "Not authenticated" }]
+      content: [{ type: 'text', text: 'Not authenticated' }]
     };
   }
   
@@ -72,31 +72,31 @@ async function handleCheckAuthStatus() {
   console.error(`[CHECK-AUTH-STATUS] Current time: ${Date.now()}`);
   
   return {
-    content: [{ type: "text", text: "Authenticated and ready" }]
+    content: [{ type: 'text', text: 'Authenticated and ready' }]
   };
 }
 
 // Tool definitions
 const authTools = [
   {
-    name: "about",
-    description: "Returns information about this Outlook Assistant server",
+    name: 'about',
+    description: 'Returns information about this Outlook Assistant server',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {},
       required: []
     },
     handler: handleAbout
   },
   {
-    name: "authenticate",
-    description: "Authenticate with Microsoft Graph API to access Outlook data",
+    name: 'authenticate',
+    description: 'Authenticate with Microsoft Graph API to access Outlook data',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         force: {
-          type: "boolean",
-          description: "Force re-authentication even if already authenticated"
+          type: 'boolean',
+          description: 'Force re-authentication even if already authenticated'
         }
       },
       required: []
@@ -104,10 +104,10 @@ const authTools = [
     handler: handleAuthenticate
   },
   {
-    name: "check-auth-status",
-    description: "Check the current authentication status with Microsoft Graph API",
+    name: 'check-auth-status',
+    description: 'Check the current authentication status with Microsoft Graph API',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {},
       required: []
     },

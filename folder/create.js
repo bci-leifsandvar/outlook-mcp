@@ -17,8 +17,8 @@ async function handleCreateFolder(args) {
   if (!folderName) {
     return {
       content: [{ 
-        type: "text", 
-        text: "Folder name is required."
+        type: 'text', 
+        text: 'Folder name is required.'
       }]
     };
   }
@@ -32,7 +32,7 @@ async function handleCreateFolder(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: result.message
       }]
     };
@@ -40,7 +40,7 @@ async function handleCreateFolder(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -48,7 +48,7 @@ async function handleCreateFolder(args) {
     
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error creating folder: ${error.message}`
       }]
     };
@@ -102,7 +102,7 @@ async function createMailFolder(accessToken, folderName, parentFolderName) {
     if (response && response.id) {
       const locationInfo = parentFolderName 
         ? `inside "${parentFolderName}"` 
-        : "at the root level";
+        : 'at the root level';
         
       return {
         success: true,

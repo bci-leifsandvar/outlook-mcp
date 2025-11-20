@@ -67,13 +67,13 @@ async function testPagination() {
     // Summary
     console.log('===================================');
     console.log('✅ All pagination tests passed!');
-    console.log(`\nResults:`);
+    console.log('\nResults:');
     console.log(`  - 10 emails: ${test1.value.length} retrieved`);
     console.log(`  - 100 emails: ${test2.value.length} retrieved (${test2Duration}ms)`);
     console.log(`  - 200 emails: ${test3.value.length} retrieved (${test3Duration}ms)`);
     
     // Show sample of latest emails
-    console.log(`\n📧 Sample (Latest 3 emails):`);
+    console.log('\n📧 Sample (Latest 3 emails):');
     test1.value.slice(0, 3).forEach((email, i) => {
       const date = new Date(email.receivedDateTime).toLocaleDateString();
       const from = email.from?.emailAddress?.name || 'Unknown';

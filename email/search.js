@@ -12,7 +12,7 @@ const { resolveFolderPath } = require('./folder-utils');
  * @returns {object} - MCP response
  */
 async function handleSearchEmails(args) {
-  const folder = args.folder || "inbox";
+  const folder = args.folder || 'inbox';
   const requestedCount = args.count || 10;
   const query = args.query || '';
   const from = args.from || '';
@@ -44,7 +44,7 @@ async function handleSearchEmails(args) {
     if (error.message === 'Authentication required') {
       return {
         content: [{ 
-          type: "text", 
+          type: 'text', 
           text: "Authentication required. Please use the 'authenticate' tool first."
         }]
       };
@@ -53,7 +53,7 @@ async function handleSearchEmails(args) {
     // General error response
     return {
       content: [{ 
-        type: "text", 
+        type: 'text', 
         text: `Error searching emails: ${error.message}`
       }]
     };
@@ -76,8 +76,8 @@ async function progressiveSearch(endpoint, accessToken, searchTerms, filterTerms
   // 1. Try combined search (most specific)
   try {
     const params = buildSearchParams(searchTerms, filterTerms, Math.min(50, maxCount));
-    console.error("Attempting combined search with params:", params);
-    searchAttempts.push("combined-search");
+    console.error('Attempting combined search with params:', params);
+    searchAttempts.push('combined-search');
     
     const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, params, maxCount);
     if (response.value && response.value.length > 0) {
@@ -130,8 +130,8 @@ async function progressiveSearch(endpoint, accessToken, searchTerms, filterTerms
   // 3. Try with only boolean filters
   if (filterTerms.hasAttachments === true || filterTerms.unreadOnly === true) {
     try {
-      console.error("Attempting search with only boolean filters");
-      searchAttempts.push("boolean-filters-only");
+      console.error('Attempting search with only boolean filters');
+      searchAttempts.push('boolean-filters-only');
       
       const filterOnlyParams = {
         $top: Math.min(50, maxCount),
@@ -151,8 +151,8 @@ async function progressiveSearch(endpoint, accessToken, searchTerms, filterTerms
   }
   
   // 4. Final fallback: just get recent emails with pagination
-  console.error("All search strategies failed, falling back to recent emails");
-  searchAttempts.push("recent-emails");
+  console.error('All search strategies failed, falling back to recent emails');
+  searchAttempts.push('recent-emails');
   
   const basicParams = {
     $top: Math.min(50, maxCount),
@@ -250,8 +250,8 @@ function formatSearchResults(response) {
   if (!response.value || response.value.length === 0) {
     return {
       content: [{ 
-        type: "text", 
-        text: `No emails found matching your search criteria.`
+        type: 'text', 
+        text: 'No emails found matching your search criteria.'
       }]
     };
   }
@@ -263,7 +263,7 @@ function formatSearchResults(response) {
     const readStatus = email.isRead ? '' : '[UNREAD] ';
     
     return `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${email.id}\n`;
-  }).join("\n");
+  }).join('\n');
   
   // Add search strategy info if available
   let additionalInfo = '';
@@ -273,7 +273,7 @@ function formatSearchResults(response) {
   
   return {
     content: [{ 
-      type: "text", 
+      type: 'text', 
       text: `Found ${response.value.length} emails matching your search criteria:${additionalInfo}\n\n${emailList}`
     }]
   };
