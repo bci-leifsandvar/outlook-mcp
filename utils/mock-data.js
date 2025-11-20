@@ -6,11 +6,11 @@
  * Simulates Microsoft Graph API responses for testing
  * @param {string} method - HTTP method
  * @param {string} path - API path
- * @param {object} data - Request data
- * @param {object} queryParams - Query parameters
+ * @param {object} _data - Request data
+ * @param {object} _queryParams - Query parameters
  * @returns {object} - Simulated API response
  */
-function simulateGraphAPIResponse(method, path, data, queryParams) {
+function simulateGraphAPIResponse(method, path, _data, _queryParams) {
   console.error(`Simulating response for: ${method} ${path}`);
   
   if (method === 'GET') {

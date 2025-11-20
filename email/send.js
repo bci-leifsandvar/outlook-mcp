@@ -1,7 +1,6 @@
 /**
  * Send email functionality
  */
-const config = require('../config');
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 

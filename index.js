@@ -44,6 +44,18 @@ structuredLog('info', `STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`)
 structuredLog('info', `Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
 
 // Combine all tools
+
+// Secure actions rule: mark all non-Read actions as requiring confirmation if secure mode is enabled
+const SECURE_ACTIONS_RULE = config.SECURE_PROMPT_MODE
+  ? {
+      enabled: true,
+      requireConfirmation: (toolName) => {
+        // Mark any tool that is not a "read" action as secure
+        return !/read/i.test(toolName);
+      }
+    }
+  : { enabled: false };
+
 const TOOLS = [
   ...authTools,
   ...calendarTools,
@@ -88,12 +100,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
   const args = request.params.arguments || {};
-  
+
   structuredLog('debug', `Executing tool: ${toolName}`, { args });
-  
+
   // Find the tool
   const tool = TOOLS.find(t => t.name === toolName);
-  
+
   if (!tool) {
     return {
       content: [{
@@ -103,7 +115,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true
     };
   }
-  
+
+  // Enforce secure workflow for non-Read actions if secure mode is enabled
+  if (SECURE_ACTIONS_RULE.enabled && SECURE_ACTIONS_RULE.requireConfirmation(toolName)) {
+    // If confirmationToken is missing, prompt for confirmation
+    if (!args.confirmationToken) {
+      const { promptForConfirmation } = require('./utils/secure-prompt');
+      return promptForConfirmation({
+        actionType: toolName,
+        fields: Object.values(args),
+        safeFields: Object.values(args),
+        globalTokenStore: '__secureActionsTokens',
+        promptText: `SECURE ACTION: Human confirmation required for '${toolName}'. Please confirm to proceed.`
+      });
+    } else {
+      const { validateConfirmationToken } = require('./utils/secure-prompt');
+      const tokenResult = validateConfirmationToken({
+        fields: Object.values(args),
+        globalTokenStore: '__secureActionsTokens',
+        confirmationToken: args.confirmationToken
+      });
+      if (tokenResult) return tokenResult;
+      // Proceed to tool handler
+    }
+  }
+
   try {
     // Execute the tool handler
     const result = await tool.handler(args);

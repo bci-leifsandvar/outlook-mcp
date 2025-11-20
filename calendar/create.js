@@ -85,7 +85,7 @@ async function handleCreateEvent(args) {
     };
 
     // Make API call
-    const response = await callGraphAPI(accessToken, 'POST', endpoint, bodyContent);
+    const _response = await callGraphAPI(accessToken, 'POST', endpoint, bodyContent);
 
     return {
       content: [{

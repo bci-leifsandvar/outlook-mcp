@@ -7,7 +7,7 @@ function getActionKey(fields) {
   return crypto.createHash('sha256').update(fields.join('|')).digest('hex');
 }
 
-function promptForConfirmation({ actionType, fields, safeFields, globalTokenStore, promptText }) {
+function promptForConfirmation({ _actionType, fields, _safeFields, globalTokenStore, promptText }) {
   const actionKey = getActionKey(fields);
   if (!global[globalTokenStore]) global[globalTokenStore] = {};
   const entry = global[globalTokenStore][actionKey];

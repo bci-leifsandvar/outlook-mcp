@@ -1,7 +1,6 @@
 /**
  * Mark email as read functionality
  */
-const config = require('../config');
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 
@@ -34,7 +33,7 @@ async function handleMarkAsRead(args) {
     };
     
     try {
-      const result = await callGraphAPI(accessToken, 'PATCH', endpoint, updateData);
+      const _result = await callGraphAPI(accessToken, 'PATCH', endpoint, updateData);
       
       const status = isRead ? 'read' : 'unread';
       

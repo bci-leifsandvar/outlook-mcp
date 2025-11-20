@@ -14,8 +14,8 @@ function escapeODataString(str) {
   // And remove any special characters that could cause OData syntax errors
   str = str.replace(/'/g, "''");
   
-  // Escape other potentially problematic characters
-  str = str.replace(/[\(\)\{\}\[\]\:\;\,\/\?\&\=\+\*\%\$\#\@\!\^]/g, '');
+  // Escape other potentially problematic characters (Fixed: removed unnecessary escapes)
+  str = str.replace(/[(){}[\]:;,/?&=+*%$#@!^]/g, '');
   
   console.error(`Escaped OData string: '${str}'`);
   return str;

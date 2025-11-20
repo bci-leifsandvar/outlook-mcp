@@ -2,7 +2,7 @@
  * List emails functionality
  */
 const config = require('../config');
-const { callGraphAPI, callGraphAPIPaginated } = require('../utils/graph-api');
+const { callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { resolveFolderPath } = require('./folder-utils');
 

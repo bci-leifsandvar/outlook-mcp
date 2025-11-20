@@ -23,13 +23,15 @@ async function handleAbout() {
  * @returns {object} - MCP response
  */
 async function handleAuthenticate(args) {
-  const force = args && args.force === true;
-  
+  const _force = args && args.force === true;
+  const { SECURE_PROMPT_MODE } = config;
+  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
+  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { confirmationToken } = args || {};
   // For test mode, create a test token
   if (config.USE_TEST_MODE) {
     // Create a test token with a 1-hour expiry
     tokenManager.createTestTokens();
-    
     return {
       content: [{
         type: 'text',
@@ -37,10 +39,38 @@ async function handleAuthenticate(args) {
       }]
     };
   }
-  
+  // For real authentication, require confirmation if secure prompt mode is enabled
+  if (SECURE_PROMPT_MODE) {
+    const safeClientId = sanitizeText(config.AUTH_CONFIG.clientId);
+    if (isSuspicious(config.AUTH_CONFIG.clientId)) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'Suspicious input detected in authentication fields. Action blocked.'
+        }],
+        requiresConfirmation: false
+      };
+    }
+    if (!confirmationToken) {
+      return promptForConfirmation({
+        actionType: 'authenticate',
+        fields: [config.AUTH_CONFIG.clientId],
+        safeFields: [safeClientId],
+        globalTokenStore: '__authTokens',
+        promptText: `SECURE ACTION: Human confirmation required.\nAuthenticate with client ID: ${safeClientId}`
+      });
+    } else {
+      const tokenResult = validateConfirmationToken({
+        fields: [config.AUTH_CONFIG.clientId],
+        globalTokenStore: '__authTokens',
+        confirmationToken
+      });
+      if (tokenResult) return tokenResult;
+      // Proceed to authenticate
+    }
+  }
   // For real authentication, generate an auth URL and instruct the user to visit it
   const authUrl = `${config.AUTH_CONFIG.authServerUrl}/auth?client_id=${config.AUTH_CONFIG.clientId}`;
-  
   return {
     content: [{
       type: 'text',
