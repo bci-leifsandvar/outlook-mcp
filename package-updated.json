@@ -1,0 +1,54 @@
+{
+  "name": "outlook-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Claude to access Outlook data via Microsoft Graph API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "auth-server": "node ./auth/outlook-auth-server.js",
+    "test-mode": "set USE_TEST_MODE=true && node index.js",
+    "mock-server": "node mock-graph-server.js",
+    "inspect": "npx @modelcontextprotocol/inspector node index.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:report": "eslint . --output-file eslint-report.txt"
+  },
+  "keywords": [
+    "claude",
+    "outlook",
+    "mcp",
+    "microsoft-graph",
+    "email"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "dotenv": "^16.5.0",
+    "rxjs": "^7.8.2",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.17.2",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "engineStrict": true,
+  "jest": {
+    "setupFiles": [
+      "<rootDir>/test/auth/jest.setup.js"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "<rootDir>"
+    ],
+    "modulePaths": [
+      "<rootDir>"
+    ]
+  }
+}

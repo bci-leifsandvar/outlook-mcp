@@ -1,7 +1,6 @@
-// Load environment variables from .env file
-require('dotenv').config();
+// Load environment variables from ../.env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
-const express = require('express');
 const request = require('supertest');
 const http = require('http');
 
@@ -15,6 +14,7 @@ const { setupOAuthRoutes, createAuthConfig } = require('../auth/oauth-server');
 // Global mock for TokenStorage instance
 const mockTokenStorageInstance = {
     getValidAccessToken: jest.fn(),
+    _consentHistory: [],
     // Add other methods if sse-server interacts with them directly
 };
 
@@ -29,9 +29,13 @@ let server; // To hold the HTTP server instance for proper cleanup
 const startServer = (done) => {
     jest.isolateModules(() => {
         if (!sseApp) {
-            // Adjusting the import path to use Jest's <rootDir> explicitly
-            const { app: tempApp } = require('<rootDir>/sse-server');
-            sseApp = tempApp;
+            try {
+                // Use relative path for Jest compatibility
+                sseApp = require('../../sse-server.js').app;
+            } catch (err) {
+                console.error('Failed to require sse-server.js:', err);
+                throw err;
+            }
         }
     });
 
@@ -134,5 +138,5 @@ describe('SSE Server (sse-server.js)', () => {
     });
 
     // Debugging Jest module resolution
-    console.log('Resolved path for sse-server:', require.resolve('../../sse-server'));
+    // Removed direct require.resolve to prevent Jest module resolution error before mocks
 });
