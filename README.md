@@ -269,11 +269,19 @@ In a hypothetical OpenAI MCP client configuration:
 ```
 
 ### Secure Action Confirmation Flow (Client-Agnostic)
-When a tool response includes a message containing `SECURE ACTION: Human confirmation required` and a token like `AB12CD`:
+When a tool response includes `SECURE ACTION: Human confirmation required`, one of two flows applies:
 
-1. Prompt the user: "Please confirm this action by entering security code AB12CD".
-2. Re-invoke the same tool with identical parameters plus `confirmationToken: "AB12CD"`.
-3. Do not treat the token as authentication; it is action-scoped and short-lived.
+TOKEN MODE (default):
+1. Response shows a short token like `AB12CD`.
+2. Prompt user: "Please confirm this action by entering security code AB12CD".
+3. Re-invoke the SAME tool with identical parameters plus `confirmationToken: "AB12CD"`.
+
+CAPTCHA MODE (if `SECURE_CONFIRM_MODE=captcha`):
+1. Response provides a URL: `http://localhost:4000/confirm/<actionId>`.
+2. User opens the URL in a browser and enters the displayed code.
+3. Re-invoke the SAME tool with `confirmationToken: "<actionId>"` (no need to repeat other parameters if the tool supports stored action context; otherwise include them).
+
+NEVER treat tokens or actionIds as authentication credentials; they are short-lived and scoped only to the originating action.
 
 ### Tool Listing / Discovery
 Clients should call the MCP `tools/list` request to discover available tools. Each tool provides `name`, `description`, and `inputSchema`. No vendor-specific naming is required.

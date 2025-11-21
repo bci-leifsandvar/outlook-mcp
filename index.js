@@ -63,21 +63,26 @@ const logger = require('./utils/logger');
 const SECURE_ACTION_PROTOCOL_MESSAGE = `
 SECURE ACTION PROTOCOL FOR OUTLOOK MCP
 
-This server uses short-lived confirmation tokens to require explicit human approval for sensitive actions (send email, create / delete / move items, rule changes).
+This server can enforce human approval for sensitive actions (send email, create/delete/move items, rule changes) using either:
+1. Token-based confirmation (default) OR
+2. Browser captcha/code confirmation (if SECURE_CONFIRM_MODE=captcha)
 
-WHEN YOU RECEIVE A CONFIRMATION TOKEN MESSAGE:
-1. The message will contain: "SECURE ACTION: Human confirmation required" and a 6-character token (e.g. "A1B2C3").
-2. Treat this token as an out-of-band human approval code — NOT an authentication or login credential.
-3. Prompt the user: "Please confirm this action by typing the security code: <TOKEN>".
-4. Wait for user input; then re-call the SAME tool with all original parameters plus: confirmationToken: "<TOKEN>".
+WHEN YOU RECEIVE A SECURE ACTION MESSAGE:
+It will contain: "SECURE ACTION: Human confirmation required".
 
-EXAMPLE (send-email):
-First call: send-email { to, subject, body }
-Response: secure action required; token "F91D17".
-User enters: F91D17.
-Second call: send-email { to, subject, body, confirmationToken: "F91D17" } => action proceeds.
+TOKEN MODE:
+• Message includes a short code (e.g. A1B2C3)
+• Ask user to provide it, then re-invoke the SAME tool with confirmationToken: "<CODE>".
 
-IMPORTANT: Only reuse the token for the specific action it was issued for. Tokens expire quickly; request again if it no longer works.
+CAPTCHA MODE:
+• Message includes a URL like http://localhost:4000/confirm/<actionId>
+• Instruct user to open it in a browser and enter the displayed code.
+• After completion, re-invoke the SAME tool with confirmationToken: "<actionId>".
+
+NOTES:
+• Codes/actionIds expire quickly—restart if invalid.
+• Never treat codes as authentication credentials.
+• Each confirmation applies only to the original action parameters.
 `;
 
 logger.info(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);

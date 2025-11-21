@@ -71,6 +71,8 @@ app.get('/api/confirmation-status/:actionId', (req, res) => {
   res.json({ confirmed: !!action.confirmed });
 });
 
-app.listen(PORT, () => {
+const serverInstance = app.listen(PORT, () => {
   console.log(`Secure Confirmation Server running at http://localhost:${PORT}`);
 });
+
+module.exports = { app, serverInstance, pendingActions };
