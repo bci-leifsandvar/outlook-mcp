@@ -1,5 +1,6 @@
 /**
  * Email module for Outlook MCP server
+ * FIXED: Added confirmationToken parameter for secure confirmation flow
  */
 const handleListEmails = require('./list');
 const handleSearchEmails = require('./search');
@@ -88,7 +89,7 @@ const emailTools = [
   },
   {
     name: 'send-email',
-    description: 'Composes and sends a new email',
+    description: 'Composes and sends a new email. When secure mode is enabled, requires human confirmation via token.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -120,6 +121,10 @@ const emailTools = [
         saveToSentItems: {
           type: 'boolean',
           description: 'Whether to save the email to sent items'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted for secure actions). After receiving a confirmation prompt with a token, collect this token from the user and include it in the next request to complete the action.'
         }
       },
       required: ['to', 'subject', 'body']

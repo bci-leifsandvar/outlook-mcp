@@ -18,9 +18,8 @@ const { getInboxRules } = require('./list');
  */
 async function handleEditRuleSequence(args) {
   const { ruleName, sequence, confirmationToken } = args;
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   const { SECURE_PROMPT_MODE } = require('../config');
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
+  const { handleSecureConfirmation } = require('../utils/secure-confirmation');
   if (!ruleName) {
     return {
       content: [{ 
@@ -38,34 +37,17 @@ async function handleEditRuleSequence(args) {
     };
   }
   if (SECURE_PROMPT_MODE) {
-    const safeRuleName = sanitizeText(ruleName);
-    const safeSequence = sanitizeText(sequence.toString());
-    if ([ruleName, sequence].some(isSuspicious)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in rule sequence fields. Action blocked.'
-        }],
-        requiresConfirmation: false
-      };
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'editRuleSequence',
+      fields: [ruleName, sequence],
+      confirmationToken,
+      globalTokenStore: '__editRuleSequenceTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nRule: ${ruleName}\nNew Sequence: ${sequence}`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
     }
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'editRuleSequence',
-        fields: [ruleName, sequence],
-        safeFields: [safeRuleName, safeSequence],
-        globalTokenStore: '__editRuleSequenceTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nRule: ${safeRuleName}\nNew Sequence: ${safeSequence}`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [ruleName, sequence],
-        globalTokenStore: '__editRuleSequenceTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to edit rule sequence
-    }
+    // Proceed to edit rule sequence if confirmationAccepted
   }
   try {
     // Get access token

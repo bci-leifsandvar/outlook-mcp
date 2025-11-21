@@ -18,9 +18,7 @@ function promptForConfirmation({ _actionType, fields, _safeFields, globalTokenSt
       content: [{
         type: 'text',
         text: `${promptText}\n\nAsk the user to input the following token to confirm: ${token}\nIf the user does not provide this token, drop the request.`
-      }],
-      requiresConfirmation: true,
-      confirmationTokenRequired: true
+      }]
     };
   }
   return null;
@@ -34,9 +32,7 @@ function validateConfirmationToken({ fields, globalTokenStore, confirmationToken
       content: [{
         type: 'text',
         text: 'Invalid or expired confirmation token. Please start the process again.'
-      }],
-      requiresConfirmation: true,
-      confirmationTokenRequired: true
+      }]
     };
   }
   delete global[globalTokenStore][actionKey];

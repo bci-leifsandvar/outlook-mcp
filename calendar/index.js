@@ -1,5 +1,6 @@
 /**
  * Calendar module for Outlook MCP server
+ * FIXED: Added confirmationToken parameter for secure actions
  */
 const handleListEvents = require('./list');
 const handleDeclineEvent = require('./decline');
@@ -37,6 +38,10 @@ const calendarTools = [
         comment: {
           type: 'string',
           description: 'Optional comment for declining the event'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt, include the token provided by the user.'
         }
       },
       required: ['eventId']
@@ -45,7 +50,7 @@ const calendarTools = [
   },
   {
     name: 'create-event',
-    description: 'Creates a new calendar event',
+    description: 'Creates a new calendar event. When secure mode is enabled, requires human confirmation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -71,6 +76,10 @@ const calendarTools = [
         body: {
           type: 'string',
           description: 'Optional body content for the event'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt with a token, collect this token from the user and include it to complete the action.'
         }
       },
       required: ['subject', 'start', 'end']
@@ -79,7 +88,7 @@ const calendarTools = [
   },
   {
     name: 'cancel-event',
-    description: 'Cancels a calendar event',
+    description: 'Cancels a calendar event. When secure mode is enabled, requires human confirmation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -90,6 +99,10 @@ const calendarTools = [
         comment: {
           type: 'string',
           description: 'Optional comment for cancelling the event'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt with a token, collect this token from the user and include it to complete the action.'
         }
       },
       required: ['eventId']
@@ -98,13 +111,17 @@ const calendarTools = [
   },
   {
     name: 'delete-event',
-    description: 'Deletes a calendar event',
+    description: 'Deletes a calendar event. When secure mode is enabled, requires human confirmation.',
     inputSchema: {
       type: 'object',
       properties: {
         eventId: {
           type: 'string',
           description: 'The ID of the event to delete'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt with a token, collect this token from the user and include it to complete the action.'
         }
       },
       required: ['eventId']

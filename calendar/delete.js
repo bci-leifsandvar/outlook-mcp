@@ -18,36 +18,19 @@ async function handleDeleteEvent(args) {
   const { eventId, confirmationToken } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    const safeEventId = sanitizeText(eventId);
-    if (isSuspicious(eventId)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in event ID. Action blocked.'
-        }],
-        requiresConfirmation: false
-      };
+    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'deleteEvent',
+      fields: [eventId],
+      confirmationToken,
+      globalTokenStore: '__deleteEventTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${eventId}`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
     }
-    // Use secure-prompt utility
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'deleteEvent',
-        fields: [eventId],
-        safeFields: [safeEventId],
-        globalTokenStore: '__deleteEventTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${safeEventId}`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [eventId],
-        globalTokenStore: '__deleteEventTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to delete event
-    }
+    // Proceed to delete event if confirmationAccepted
   }
 
   if (!eventId) {

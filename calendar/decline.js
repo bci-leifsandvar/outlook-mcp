@@ -11,43 +11,26 @@ const { ensureAuthenticated } = require('../auth');
  */
 async function handleDeclineEvent(args) {
   const { logSensitiveAction } = require('../utils/sensitive-log');
-  // Log attempt (before confirmation)
-  logSensitiveAction('declineEvent', args, 'unknown', isSuspicious(eventId));
   const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  // Log attempt (before confirmation)
+  logSensitiveAction('declineEvent', args, 'unknown', isSuspicious(args.eventId));
   require('../config').ensureConfigSafe();
   const { eventId, comment, confirmationToken } = args;
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    const safeEventId = sanitizeText(eventId);
-    if (isSuspicious(eventId)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in event ID. Action blocked.'
-        }],
-        requiresConfirmation: false
-      };
+    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'declineEvent',
+      fields: [eventId, comment],
+      confirmationToken,
+      globalTokenStore: '__declineEventTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${eventId}`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
     }
-    // Use secure-prompt utility
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'declineEvent',
-        fields: [eventId, comment],
-        safeFields: [safeEventId],
-        globalTokenStore: '__declineEventTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${safeEventId}`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [eventId, comment],
-        globalTokenStore: '__declineEventTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to decline event
-    }
+    // Proceed to decline event if confirmationAccepted
   }
 
   if (!eventId) {

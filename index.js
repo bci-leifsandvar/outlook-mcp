@@ -4,6 +4,7 @@ if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING) {
 }
 /**
  * Outlook MCP Server - Main entry point
+ * FIXED: Clearer onboarding instructions for secure confirmation flow
  * 
  * A Model Context Protocol server that provides access to
  * Microsoft Outlook through the Microsoft Graph API.
@@ -40,26 +41,40 @@ function structuredLog(level, message, details = {}) {
   console.error(JSON.stringify(entry));
 }
 
+// IMPROVED: Clearer onboarding message for Claude with explicit instructions
+const SECURE_ACTION_PROTOCOL_MESSAGE = `
+SECURE ACTION PROTOCOL FOR OUTLOOK MCP
 
-// Inject secure action protocol onboarding message for Claude
-const SECURE_ACTION_PROTOCOL_MESSAGE = `SECURE ACTION PROTOCOL INSTRUCTION\n\nWhen you receive a message indicating \"SECURE ACTION: Human confirmation required\" and a token, you must:\n\n1. Prompt the user to input the provided token.\n2. Wait for the user’s response.\n3. Include the user’s input as confirmationToken in your next MCP request for this action.\n4. If the token is missing or incorrect, do not proceed and prompt again.\n\nExample:\n- Server:  \"SECURE ACTION: Human confirmation required. ... Ask the user to input the following token to confirm: F91D17 ...\"\n- Claude:  \"Please enter the security code: F91D17\"\n- User:  \"F91D17\"\n- Claude (next request):  { ..., \"confirmationToken\": \"F91D17\" }\n`;
+This server uses confirmation tokens to ensure human approval for sensitive actions like sending emails.
+
+WHEN YOU SEE A CONFIRMATION TOKEN:
+
+1. If the server returns a message with "SECURE ACTION: Human confirmation required" and shows a 6-character token (like "A1B2C3"):
+   - DO NOT try to authenticate with this token
+   - DO NOT use the authenticate tool
+   - This is NOT a login token
+
+2. Instead, you should:
+   - Ask the user: "Please confirm this action by typing the security code: [TOKEN]"
+   - Wait for the user to type the token back
+   - Call THE SAME TOOL AGAIN with all original parameters PLUS confirmationToken: "[user's input]"
+
+3. Example for send-email:
+   - First call: send-email with to, subject, body
+   - Server responds with token "F91D17"
+   - You ask user: "Please confirm sending this email by typing the security code: F91D17"
+   - User types: "F91D17"
+   - Second call: send-email with to, subject, body, confirmationToken: "F91D17"
+   - Email is sent successfully
+
+IMPORTANT: The confirmationToken parameter is ONLY used when retrying the SAME action after receiving a security token. It's not for authentication - it's for confirming the specific action you just tried.
+`;
+
 structuredLog('info', `STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
 structuredLog('info', `Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
 structuredLog('info', 'SECURE ACTION PROTOCOL MESSAGE', { onboarding: SECURE_ACTION_PROTOCOL_MESSAGE });
 
 // Combine all tools
-
-// Secure actions rule: mark all non-Read actions as requiring confirmation if secure mode is enabled
-const SECURE_ACTIONS_RULE = config.SECURE_PROMPT_MODE
-  ? {
-      enabled: true,
-      requireConfirmation: (toolName) => {
-        // Mark any tool that is not a "read" action as secure
-        return !/read/i.test(toolName);
-      }
-    }
-  : { enabled: false };
-
 const TOOLS = [
   ...authTools,
   ...calendarTools,
@@ -101,12 +116,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// Register tools/call handler
+// Register tools/call handler with improved secure action handling
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
   const args = request.params.arguments || {};
 
-  structuredLog('debug', `Executing tool: ${toolName}`, { args });
+  structuredLog('debug', `Executing tool: ${toolName}`, { 
+    args: Object.keys(args).reduce((acc, key) => {
+      // Log args but mask sensitive data
+      if (key === 'confirmationToken' || key === 'body') {
+        acc[key] = '[REDACTED]';
+      } else {
+        acc[key] = args[key];
+      }
+      return acc;
+    }, {})
+  });
 
   // Find the tool
   const tool = TOOLS.find(t => t.name === toolName);
@@ -121,33 +146,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 
-  // Enforce secure workflow for non-Read actions if secure mode is enabled
-  if (SECURE_ACTIONS_RULE.enabled && SECURE_ACTIONS_RULE.requireConfirmation(toolName)) {
-    // If confirmationToken is missing, prompt for confirmation
-    if (!args.confirmationToken) {
-      const { promptForConfirmation } = require('./utils/secure-prompt');
-      return promptForConfirmation({
-        actionType: toolName,
-        fields: Object.values(args),
-        safeFields: Object.values(args),
-        globalTokenStore: '__secureActionsTokens',
-        promptText: `SECURE ACTION: Human confirmation required for '${toolName}'. Please confirm to proceed.`
-      });
-    } else {
-      const { validateConfirmationToken } = require('./utils/secure-prompt');
-      const tokenResult = validateConfirmationToken({
-        fields: Object.values(args),
-        globalTokenStore: '__secureActionsTokens',
-        confirmationToken: args.confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to tool handler
-    }
+  // IMPROVED: Better logging for secure action flow
+  const requiresConfirmation = config.SECURE_PROMPT_MODE && 
+    /(send|create|delete|update|move|edit)/i.test(toolName);
+  
+  if (requiresConfirmation) {
+    structuredLog('debug', `Tool ${toolName} requires confirmation`, {
+      hasToken: !!args.confirmationToken,
+      secureMode: config.SECURE_PROMPT_MODE
+    });
   }
 
   try {
-    // Execute the tool handler
+    // Execute the tool handler (it will handle confirmation internally)
     const result = await tool.handler(args);
+
+    // IMPROVED: Add context hint if this is a confirmation request
+    if (result && result.content && result.content[0] && 
+        result.content[0].text && 
+        result.content[0].text.includes('SECURE ACTION: Human confirmation required')) {
+      
+      // Extract the token from the message
+      const tokenMatch = result.content[0].text.match(/token to confirm: ([A-Z0-9]{6})/);
+      if (tokenMatch) {
+        // Add a clear instruction as a separate message
+        result.content.push({
+          type: 'text',
+          text: `\n[INSTRUCTION FOR CLAUDE]: Ask the user to type the token ${tokenMatch[1]}, then call ${toolName} again with ALL original parameters PLUS confirmationToken: "${tokenMatch[1]}"`
+        });
+      }
+    }
 
     // Ensure result is in proper MCP format
     if (result && result.content) {

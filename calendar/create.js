@@ -24,39 +24,19 @@ async function handleCreateEvent(args) {
   
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
   if (SECURE_PROMPT_MODE) {
-    const safeSubject = sanitizeText(subject);
-    const safeStart = sanitizeText(start?.dateTime || start);
-    const safeEnd = sanitizeText(end?.dateTime || end);
-    const safeAttendees = Array.isArray(attendees) ? attendees.map(sanitizeText).join(', ') : 'None';
-    if ([subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in event fields. Action blocked.'
-        }],
-        requiresConfirmation: false
-      };
+    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'createEvent',
+      fields: [subject, start, end, attendees, body],
+      confirmationToken,
+      globalTokenStore: '__createEventTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nSubject: ${subject}\nStart: ${start?.dateTime || start}\nEnd: ${end?.dateTime || end}\nAttendees: ${Array.isArray(attendees) ? attendees.join(', ') : 'None'}`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
     }
-    // Use secure-prompt utility
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'createEvent',
-        fields: [subject, start, end, attendees, body],
-        safeFields: [safeSubject, safeStart, safeEnd, safeAttendees],
-        globalTokenStore: '__createEventTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nSubject: ${safeSubject}\nStart: ${safeStart}\nEnd: ${safeEnd}\nAttendees: ${safeAttendees}`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [subject, start, end, attendees, body],
-        globalTokenStore: '__createEventTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to create event
-    }
+    // Proceed to create event if confirmationAccepted
   }
 
   if (!subject || !start || !end) {

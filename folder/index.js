@@ -1,5 +1,6 @@
 /**
  * Folder management module for Outlook MCP server
+ * FIXED: Added confirmationToken parameter for secure actions
  */
 const handleListFolders = require('./list');
 const handleCreateFolder = require('./create');
@@ -28,7 +29,7 @@ const folderTools = [
   },
   {
     name: 'create-folder',
-    description: 'Creates a new mail folder',
+    description: 'Creates a new mail folder. When secure mode is enabled, requires human confirmation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -39,6 +40,10 @@ const folderTools = [
         parentFolder: {
           type: 'string',
           description: 'Optional parent folder name (default is root)'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt with a token, collect this token from the user and include it to complete the action.'
         }
       },
       required: ['name']
@@ -47,7 +52,7 @@ const folderTools = [
   },
   {
     name: 'move-emails',
-    description: 'Moves emails from one folder to another',
+    description: 'Moves emails from one folder to another. When secure mode is enabled, requires human confirmation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -62,6 +67,10 @@ const folderTools = [
         sourceFolder: {
           type: 'string',
           description: 'Optional name of the source folder (default is inbox)'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token (required when prompted). After receiving a confirmation prompt with a token, collect this token from the user and include it to complete the action.'
         }
       },
       required: ['emailIds', 'targetFolder']

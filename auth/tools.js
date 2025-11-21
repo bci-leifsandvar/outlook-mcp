@@ -48,7 +48,7 @@ async function handleAuthenticate(args) {
           type: 'text',
           text: 'Suspicious input detected in authentication fields. Action blocked.'
         }],
-        requiresConfirmation: false
+        isError: true
       };
     }
     if (!confirmationToken) {
@@ -127,6 +127,10 @@ const authTools = [
         force: {
           type: 'boolean',
           description: 'Force re-authentication even if already authenticated'
+        },
+        confirmationToken: {
+          type: 'string',
+          description: 'Security confirmation token for authentication (when prompted in secure mode)'
         }
       },
       required: []
