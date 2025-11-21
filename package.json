@@ -40,9 +40,7 @@
   },
   "engineStrict": true,
   "jest": {
-    "setupFiles": [
-      "<rootDir>/test/auth/jest.setup.js"
-    ],
+    
     "moduleDirectories": [
       "node_modules",
       "<rootDir>"

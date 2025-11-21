@@ -12,7 +12,7 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
   

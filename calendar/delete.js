@@ -13,7 +13,7 @@ async function handleDeleteEvent(args) {
   const { logSensitiveAction } = require('../utils/sensitive-log');
   // Log attempt (before confirmation)
   logSensitiveAction('deleteEvent', args, 'unknown', isSuspicious(eventId));
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { eventId, confirmationToken } = args;
   // Secure prompting mode (from config)

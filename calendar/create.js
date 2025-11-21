@@ -12,7 +12,7 @@ const { DEFAULT_TIMEZONE } = require('../config');
  */
 async function handleCreateEvent(args) {
   // Import utilities FIRST before using them
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
   

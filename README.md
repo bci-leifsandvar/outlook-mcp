@@ -234,6 +234,64 @@ For sensitive actions (such as sending email), you may be prompted to confirm be
 5. **Complete OAuth Flow**: Visit the URL in your browser and sign in with Microsoft
 6. **Start Using**: Once authenticated, you can use all the Outlook tools in Claude!
 
+## Using with Other MCP Clients (ChatGPT, OpenAPI Workers, Generic Orchestrators)
+
+This server speaks the standard MCP over stdio. Any client that can launch a local process and perform the MCP handshake can integrate it.
+
+### Environment Variables for Generic Clients
+Set the following when spawning the server:
+
+```
+MS_CLIENT_ID=your-azure-client-id
+MS_CLIENT_SECRET=your-azure-secret-value
+USE_TEST_MODE=false
+```
+
+Optionally set `MCP_CLIENT=chatgpt` or `OPENAI_MCP=1` to signal a non-Claude environment (the server will then load `.env` only if these are absent).
+
+### ChatGPT / OpenAI MCP Example (Pseudo Config)
+In a hypothetical OpenAI MCP client configuration:
+```json
+{
+  "mcpServers": {
+    "outlook": {
+      "command": "node",
+      "args": ["/absolute/path/to/outlook-mcp/index.js"],
+      "env": {
+        "MS_CLIENT_ID": "your-id",
+        "MS_CLIENT_SECRET": "your-secret",
+        "USE_TEST_MODE": "false",
+        "MCP_CLIENT": "chatgpt"
+      }
+    }
+  }
+}
+```
+
+### Secure Action Confirmation Flow (Client-Agnostic)
+When a tool response includes a message containing `SECURE ACTION: Human confirmation required` and a token like `AB12CD`:
+
+1. Prompt the user: "Please confirm this action by entering security code AB12CD".
+2. Re-invoke the same tool with identical parameters plus `confirmationToken: "AB12CD"`.
+3. Do not treat the token as authentication; it is action-scoped and short-lived.
+
+### Tool Listing / Discovery
+Clients should call the MCP `tools/list` request to discover available tools. Each tool provides `name`, `description`, and `inputSchema`. No vendor-specific naming is required.
+
+### Error & Logging Behavior
+Structured logs are emitted to stderr (JSON). Sensitive values (email bodies, confirmation tokens) are masked. Clients do not need to parse logs; they are intended for local observability.
+
+### Test Mode
+Set `USE_TEST_MODE=true` to enable deterministic mock data without reaching Microsoft Graph. Avoid this in production workflows.
+
+### Graceful Degradation
+If a client does not support interactive confirmation, secure actions will remain pending until a valid token is supplied. The client may present the token request verbatim and collect user input manually.
+
+### Compatibility Notes
+- Stdio transport only; if a client requires sockets or HTTP, wrap the process using a bridge that translates MCP frames.
+- No Claude-specific instructions remain; responses use `[CLIENT ACTION]` markers for added clarity but can be ignored safely.
+- Authentication still requires launching the separate auth server (`npm run auth-server`) before using the `authenticate` tool.
+
 ## Running Standalone
 
 You can test the server using:

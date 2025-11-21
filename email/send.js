@@ -29,48 +29,44 @@ async function handleSendEmail(args) {
   rateLimitStore[userKey].push(now);
   const { logSensitiveAction } = require('../utils/sensitive-log');
   // Log attempt (before confirmation)
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
-  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken } = args;
+  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken: _confirmationToken } = args;
   logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
   const { SECURE_PROMPT_MODE } = require('../config');
   const sanitizeHtml = require('sanitize-html');
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE) {
-    const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
-    const safeSubject = sanitizeText(subject);
-    const safeTo = sanitizeText(to);
-    const safeCc = sanitizeText(cc);
-    const safeBcc = sanitizeText(bcc);
-    if ([subject, to, cc, bcc].some(isSuspicious)) {
+    // Use secure-confirmation-server for web-based confirmation
+    const axios = require('axios');
+    if (!args.confirmationId) {
+      // Create a pending confirmation
+      const response = await axios.post('http://localhost:4000/api/create-confirmation', {
+        to,
+        subject,
+        body
+      });
+      const { actionId, confirmUrl } = response.data;
       return {
         content: [{
           type: 'text',
-          text: 'Suspicious input detected in email fields. Action blocked.'
+          text: `SECURE ACTION: Please confirm this email by visiting: ${confirmUrl}`
         }],
-        requiresConfirmation: false
+        requiresConfirmation: true,
+        confirmationId: actionId
       };
-    }
-    // Use secure-prompt utility - FIXED: Now properly generates token
-    if (!confirmationToken) {
-      const promptResult = promptForConfirmation({
-        actionType: 'sendEmail',
-        fields: [to, cc || '', bcc || '', subject, body],
-        safeFields: [safeTo, safeCc, safeBcc, safeSubject],
-        globalTokenStore: '__sendEmailTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nAction: Send Email\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}`
-      });
-      
-      if (promptResult) {
-        return promptResult;
-      }
     } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [to, cc || '', bcc || '', subject, body],
-        globalTokenStore: '__sendEmailTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
+      // Check confirmation status
+      const response = await axios.get(`http://localhost:4000/api/confirmation-status/${args.confirmationId}`);
+      if (!response.data.confirmed) {
+        return {
+          content: [{
+            type: 'text',
+            text: 'Email confirmation not yet completed. Please visit the confirmation page.'
+          }],
+          requiresConfirmation: true
+        };
+      }
       // Proceed to send
     }
   }
@@ -96,8 +92,7 @@ async function handleSendEmail(args) {
   for (const email of allEmails) {
     if (email.trim() && !emailRegex.test(email.trim())) {
       return {
-        content: [{ type: 'text', text: `Invalid email address detected: ${email.trim()}` }],
-        isError: true
+        content: [{ type: 'text', text: `Invalid email address detected: ${email.trim()}` }]
       };
     }
   }

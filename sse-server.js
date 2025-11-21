@@ -5,8 +5,9 @@ const TokenStorage = require('./auth/token-storage');
 const app = express();
 const tokenStorage = new TokenStorage();
 
-// Middleware to ensure authentication
-app.use(async (req, res, next) => {
+
+// Auth middleware for protected routes only
+const requireAuth = async (req, res, next) => {
   try {
     const token = await tokenStorage.getValidAccessToken();
     if (!token) {
@@ -17,7 +18,7 @@ app.use(async (req, res, next) => {
   } catch (error) {
     res.status(500).json({ error: 'Internal server error.' });
   }
-});
+};
 
 // Root route
 app.get('/', (req, res) => {
@@ -27,14 +28,35 @@ app.get('/', (req, res) => {
 // OAuth routes
 setupOAuthRoutes(app, tokenStorage);
 
-// SSE route
-app.get('/sse', (req, res) => {
+
+// Protected SSE route
+app.get('/sse', requireAuth, (req, res) => {
   res.status(200).send('SSE endpoint');
 });
 
-// Messages route
-app.get('/messages', (req, res) => {
+// Protected Messages route
+app.get('/messages', requireAuth, (req, res) => {
   res.status(200).send('Messages endpoint');
+});
+
+// Protected MCP route (POST)
+
+// Custom JSON error handler for /mcp
+const mcpJsonMiddleware = [
+  express.json(),
+  (err, req, res, next) => {
+    if (err && err.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Invalid MCP request payload.' });
+    }
+    next(err);
+  }
+];
+
+app.post('/mcp', requireAuth, ...mcpJsonMiddleware, (req, res) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Invalid MCP request payload.' });
+  }
+  res.status(200).json({ message: 'MCP request received.' });
 });
 
 module.exports = { app };

@@ -4,18 +4,7 @@
 const https = require('https');
 const http = require('http');
 const config = require('../config');
-const { maskPIIinObject } = require('./sanitize');
-function structuredLog(level, message, details = {}) {
-  const maskedDetails = maskPIIinObject(details);
-  const entry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...maskedDetails
-  };
-  // Output as JSON string for SIEM/monitoring compliance
-  console.error(JSON.stringify(entry));
-}
+const logger = require('./logger');
 const mockData = require('./mock-data');
 
 /**
@@ -27,28 +16,28 @@ const mockData = require('./mock-data');
  * @param {object} queryParams - Query parameters
  * @returns {Promise<object>} - The API response
  */
-async function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) {
+function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) {
   // For local test mode, simulate with canned mock data
   if (config.USE_TEST_MODE && accessToken.startsWith('test_access_token_')) {
-    structuredLog('debug', 'TEST MODE: Simulating API call', { method, path, data, queryParams });
+    logger.debug('TEST MODE: Simulating API call', { method, path, data, queryParams });
     return mockData.simulateGraphAPIResponse(method, path, data, queryParams);
   }
   // For mock Graph API server mode, always route to GRAPH_API_ENDPOINT
   if (config.USE_MOCK_GRAPH_API) {
-    structuredLog('debug', 'MOCK GRAPH API MODE: Routing API call', { method, path, endpoint: config.GRAPH_API_ENDPOINT });
+    logger.debug('MOCK GRAPH API MODE: Routing API call', { method, path, endpoint: config.GRAPH_API_ENDPOINT });
     // Build URL from path and queryParams as usual
     // ...existing real API call logic below...
   }
 
   try {
-    structuredLog('info', 'Making real API call', { method, path });
+    logger.info('Making real API call', { method, path });
     
     // Check if path already contains the full URL (from nextLink)
     let finalUrl;
     if (path.startsWith('http://') || path.startsWith('https://')) {
       // Path is already a full URL (from pagination nextLink)
       finalUrl = path;
-      structuredLog('debug', 'Using full URL from nextLink', { finalUrl });
+      logger.debug('Using full URL from nextLink', { finalUrl });
     } else {
       // Build URL from path and queryParams
       // Encode path segments properly
@@ -86,11 +75,11 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
           queryString = `?${queryString}`;
         }
         
-        structuredLog('debug', 'Graph API query string', { queryString });
+        logger.debug('Graph API query string', { queryString });
       }
       
       finalUrl = `${config.GRAPH_API_ENDPOINT}${encodedPath}${queryString}`;
-      structuredLog('debug', 'Graph API full URL', { finalUrl });
+      logger.debug('Graph API full URL', { finalUrl });
     }
     
     return new Promise((resolve, reject) => {
@@ -141,7 +130,7 @@ async function callGraphAPI(accessToken, method, path, data = null, queryParams 
       req.end();
     });
   } catch (error) {
-    structuredLog('error', 'Error calling Graph API', { error: error.stack });
+    logger.error('Error calling Graph API', { error: error.stack });
     throw error;
   }
 }
@@ -173,12 +162,12 @@ async function callGraphAPIPaginated(accessToken, method, path, queryParams = {}
       // Add items from this page
       if (response.value && Array.isArray(response.value)) {
         allItems.push(...response.value);
-        structuredLog('info', 'Pagination: Retrieved items', { count: response.value.length, total: allItems.length });
+        logger.info('Pagination: Retrieved items', { count: response.value.length, total: allItems.length });
       }
 
       // Check if we've reached the desired count
       if (maxCount > 0 && allItems.length >= maxCount) {
-        structuredLog('info', 'Pagination: Reached max count, stopping', { maxCount });
+        logger.info('Pagination: Reached max count, stopping', { maxCount });
         break;
       }
 
@@ -189,20 +178,20 @@ async function callGraphAPIPaginated(accessToken, method, path, queryParams = {}
         // Pass the full nextLink URL directly to callGraphAPI
         currentUrl = nextLink;
         currentParams = {}; // nextLink already contains all params
-        structuredLog('debug', 'Pagination: Following nextLink', { total: allItems.length });
+        logger.debug('Pagination: Following nextLink', { total: allItems.length });
       }
     } while (nextLink);
 
     // Trim to exact count if needed
     const finalItems = maxCount > 0 ? allItems.slice(0, maxCount) : allItems;
 
-    structuredLog('info', 'Pagination complete', { total: finalItems.length });
+    logger.info('Pagination complete', { total: finalItems.length });
     return {
       value: finalItems,
       '@odata.count': finalItems.length
     };
   } catch (error) {
-    structuredLog('error', 'Error during pagination', { error: error.stack });
+    logger.error('Error during pagination', { error: error.stack });
     throw error;
   }
 }

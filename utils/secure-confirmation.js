@@ -10,7 +10,7 @@ const { sanitizeText, isSuspicious } = require('../utils/sanitize');
  * @param {object} args - { actionType, fields, safeFields, confirmationToken, globalTokenStore, promptText }
  * @returns {object} - MCP response
  */
-async function handleSecureConfirmation(args) {
+function handleSecureConfirmation(args) {
   const { actionType, fields = [], safeFields = [], confirmationToken, globalTokenStore = '__secureActionsTokens', promptText } = args;
   // Sanitize and check for suspicious input
   if (fields.some(isSuspicious)) {

@@ -11,7 +11,7 @@ const { ensureAuthenticated } = require('../auth');
  */
 async function handleDeclineEvent(args) {
   const { logSensitiveAction } = require('../utils/sensitive-log');
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   // Log attempt (before confirmation)
   logSensitiveAction('declineEvent', args, 'unknown', isSuspicious(args.eventId));
   require('../config').ensureConfigSafe();

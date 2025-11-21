@@ -127,7 +127,7 @@ async function handleMoveEmails(args) {
  * @param {string} sourceFolderName - Name of the source folder (optional)
  * @returns {Promise<object>} - Result object with status and message
  */
-async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, sourceFolderName) {
+async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, _sourceFolderName) {
   try {
     // Get the target folder ID
     const targetFolderId = await getFolderIdByName(accessToken, targetFolderName);

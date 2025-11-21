@@ -8,7 +8,7 @@ const tokenManager = require('./token-manager');
  * About tool handler
  * @returns {object} - MCP response
  */
-async function handleAbout() {
+function handleAbout() {
   return {
     content: [{
       type: 'text',
@@ -22,7 +22,7 @@ async function handleAbout() {
  * @param {object} args - Tool arguments
  * @returns {object} - MCP response
  */
-async function handleAuthenticate(args) {
+function handleAuthenticate(args) {
   const _force = args && args.force === true;
   const { SECURE_PROMPT_MODE } = config;
   const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
@@ -83,7 +83,7 @@ async function handleAuthenticate(args) {
  * Check authentication status tool handler
  * @returns {object} - MCP response
  */
-async function handleCheckAuthStatus() {
+function handleCheckAuthStatus() {
   console.error('[CHECK-AUTH-STATUS] Starting authentication status check');
   
   const tokens = tokenManager.loadTokenCache();

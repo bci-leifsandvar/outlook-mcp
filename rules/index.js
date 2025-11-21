@@ -65,7 +65,7 @@ async function handleEditRuleSequence(args) {
       };
     }
     // Update the rule sequence
-    const updateResult = await callGraphAPI(
+    const _updateResult = await callGraphAPI(
       accessToken,
       'PATCH',
       `me/mailFolders/inbox/messageRules/${rule.id}`,
