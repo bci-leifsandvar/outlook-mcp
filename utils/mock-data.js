@@ -129,10 +129,44 @@ function simulateGraphAPIResponse(method, path, _data, _queryParams) {
           { id: 'deleteditems', displayName: 'Deleted Items' }
         ]
       };
+    } else if (path.includes('mailboxSettings')) {
+      return {
+        timeZone: 'Pacific Standard Time',
+        automaticallyAdjustForDaylightSavingTime: true,
+        language: { locale: 'en-US', displayName: 'English (United States)' },
+        workingHours: {
+          daysOfWeek: ['monday','tuesday','wednesday','thursday','friday'],
+          startTime: '08:00:00.0000000',
+          endTime: '17:00:00.0000000',
+          timeZone: { name: 'Pacific Standard Time' }
+        },
+        automaticRepliesSetting: {
+          status: 'disabled',
+          externalAudience: 'contactsOnly',
+          internalReplyMessage: '',
+          externalReplyMessage: ''
+        }
+      };
+    } else if (path.includes('contacts')) {
+      // list or single contact (single omitted for simplicity)
+      return {
+        value: [
+          { id: 'contact-1', displayName: 'Alice Adams', emailAddresses: [{ address: 'alice@example.com'}], companyName: 'ExampleCorp' },
+          { id: 'contact-2', displayName: 'Bob Brown', emailAddresses: [{ address: 'bob@example.com'}], companyName: 'ExampleCorp' }
+        ]
+      };
     }
   } else if (method === 'POST' && path.includes('sendMail')) {
     // Simulate a successful email send
     return {};
+  } else if (method === 'POST' && path.includes('/contacts')) {
+    return { id: 'new-contact-id' };
+  } else if (method === 'PATCH' && path.includes('/contacts/')) {
+    return { updated: true };
+  } else if (method === 'DELETE' && path.includes('/contacts/')) {
+    return { deleted: true };
+  } else if (method === 'PATCH' && path.includes('mailboxSettings')) {
+    return { automaticRepliesSetting: _data.automaticRepliesSetting || {} };
   }
   
   // If we get here, we don't have a simulation for this endpoint

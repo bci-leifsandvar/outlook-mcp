@@ -59,7 +59,14 @@ const ALLOWED_SCOPES = [
   'User.Read',
   'Calendars.Read',
   'Calendars.ReadWrite',
-  'Contacts.Read'
+  'Contacts.Read',
+  'Contacts.ReadWrite',
+  'MailboxSettings.Read',
+  'MailboxSettings.ReadWrite',
+  'MailboxFolder.Read',
+  'MailboxFolder.ReadWrite',
+  'MailboxItem.Read',
+  'offline_access'
 ];
 
 // Default scopes if none specified or invalid

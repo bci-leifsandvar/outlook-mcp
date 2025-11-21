@@ -29,6 +29,8 @@ const { calendarTools } = require('./calendar');
 const { emailTools } = require('./email');
 const { folderTools } = require('./folder');
 const { rulesTools } = require('./rules');
+const { mailboxTools } = require('./mailbox');
+const { contactsTools } = require('./contacts');
 
 // Log startup information
 // Spawn subservers (auth and secure confirmation) as child processes if not already running
@@ -95,7 +97,9 @@ const TOOLS = [
   ...calendarTools,
   ...emailTools,
   ...folderTools,
-  ...rulesTools
+  ...rulesTools,
+  ...mailboxTools,
+  ...contactsTools
 ];
 
 // Debug: Print all registered tool names and count
