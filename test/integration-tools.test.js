@@ -77,7 +77,7 @@ describe('Secure confirmation flows', () => {
       body: 'Event body'
     });
     expect(first.content[0].text).toMatch(/SECURE ACTION: Human confirmation required/);
-    const tokenMatch = first.content[0].text.match(/token to confirm: ([A-Z0-9]{6})/);
+    const tokenMatch = first.content[0].text.match(/token to confirm: ([A-Z0-9]{6})/) || first.content[0].text.match(/Security code: ([A-Z0-9]{6})/);
     expect(tokenMatch).toBeTruthy();
     const token = tokenMatch[1];
     const second = await handleCreateEvent({

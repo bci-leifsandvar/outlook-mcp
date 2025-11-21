@@ -23,9 +23,9 @@ function httpGet(url) {
 // Utility to POST form data
 function httpPost(url, form) {
   return new Promise((resolve, reject) => {
-    const { hostname, port, path } = new URL(url);
+    const { hostname, port, pathname } = new URL(url);
     const body = Object.entries(form).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-    const options = { hostname, port, path, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) } };
+    const options = { hostname, port, path: pathname, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) } };
     const req = http.request(options, (res) => {
       let data = '';
       res.on('data', chunk => (data += chunk));
