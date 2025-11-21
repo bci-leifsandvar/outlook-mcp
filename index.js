@@ -177,8 +177,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    // Execute the tool handler (it will handle confirmation internally)
-    const result = await tool.handler(args);
+        // Runtime scope validation (skip in test mode)
+        if (!config.USE_TEST_MODE && Array.isArray(tool.requiredScopes)) {
+          const { validateToolScopes } = require('./config');
+          const scopeCheck = validateToolScopes(toolName, tool.requiredScopes, config.AUTH_CONFIG.scopes);
+          if (!scopeCheck.ok) {
+            return {
+              content: [{
+                type: 'text',
+                text: scopeCheck.message + `\nGranted scopes: ${config.AUTH_CONFIG.scopes.join(', ')}`
+              }],
+              isError: true
+            };
+          }
+        }
+
+        // Execute the tool handler (it will handle confirmation internally)
+        const result = await tool.handler(args);
 
     // IMPROVED: Add context hint if this is a confirmation request
     if (result && result.content && result.content[0] &&

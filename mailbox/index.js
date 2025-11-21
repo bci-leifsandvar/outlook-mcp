@@ -5,12 +5,14 @@ const mailboxTools = [
   {
     name: 'get-mailbox-settings',
     description: 'Retrieve mailbox settings including time zone and auto-reply configuration.',
+    requiredScopes: ['MailboxSettings.Read'],
     inputSchema: { type: 'object', properties: {} },
     handler: handleGetMailboxSettings
   },
   {
     name: 'set-auto-reply',
     description: 'Configure mailbox automatic replies (out-of-office). Requires MailboxSettings.ReadWrite.',
+    requiredScopes: ['MailboxSettings.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

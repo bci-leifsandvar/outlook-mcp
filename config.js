@@ -51,12 +51,16 @@ const ensureConfigSafe = () => {
   }
 };
 
-// Allowed scopes for security validation
+// Allowed scopes for security validation (includes identity/OIDC basics)
 const ALLOWED_SCOPES = [
+  'openid',
+  'profile',
+  'email',
+  'offline_access',
+  'User.Read',
   'Mail.Read',
   'Mail.ReadWrite',
   'Mail.Send',
-  'User.Read',
   'Calendars.Read',
   'Calendars.ReadWrite',
   'Contacts.Read',
@@ -65,29 +69,96 @@ const ALLOWED_SCOPES = [
   'MailboxSettings.ReadWrite',
   'MailboxFolder.Read',
   'MailboxFolder.ReadWrite',
-  'MailboxItem.Read',
-  'offline_access'
+  'MailboxItem.Read'
 ];
 
-// Default scopes if none specified or invalid
-const DEFAULT_SCOPES = ['Mail.Read', 'User.Read', 'Calendars.Read'];
+// Scope profiles for least-privilege abstraction
+const PROFILE_SCOPE_MAP = {
+  minimal: [
+    'openid','profile','email','User.Read',
+    'Mail.Read','Calendars.Read','Contacts.Read','MailboxSettings.Read'
+  ],
+  compose: [
+    'openid','profile','email','User.Read',
+    'Mail.Read','Mail.Send','Calendars.ReadWrite','Contacts.Read'
+  ],
+  manage: [
+    'openid','profile','email','User.Read','offline_access',
+    'Mail.ReadWrite','Mail.Send','Calendars.ReadWrite','Contacts.ReadWrite'
+  ],
+  'admin-plus': [
+    'openid','profile','email','User.Read','offline_access',
+    'Mail.ReadWrite','Mail.Send','Calendars.ReadWrite','Contacts.ReadWrite','MailboxSettings.ReadWrite'
+  ],
+  constrained: [
+    'openid','profile','email','User.Read',
+    'Mail.Read','Mail.Send','MailboxFolder.ReadWrite','Calendars.Read','Contacts.Read'
+  ]
+};
 
-// Parse and validate scopes from environment
+// Default scopes if none specified or invalid (read-only minimal set)
+const DEFAULT_SCOPES = PROFILE_SCOPE_MAP.minimal;
+
+// Determine active profile
+const ACTIVE_SCOPE_PROFILE = (process.env.OUTLOOK_SCOPE_PROFILE || '').trim().toLowerCase() || null;
+
+// Parse and validate scopes from environment or profile
 const parseScopes = () => {
+  // If a profile is specified, start with its scopes directly
+  if (ACTIVE_SCOPE_PROFILE) {
+    const profileScopes = PROFILE_SCOPE_MAP[ACTIVE_SCOPE_PROFILE];
+    if (!profileScopes) {
+      failClosed(`OUTLOOK_SCOPE_PROFILE '${ACTIVE_SCOPE_PROFILE}' is invalid. Valid profiles: ${Object.keys(PROFILE_SCOPE_MAP).join(', ')}`);
+    }
+    let requested = profileScopes.slice();
+
+    // If OUTLOOK_SCOPES provided, ensure they are subset of profile (fail closed if not)
+    if (process.env.OUTLOOK_SCOPES) {
+      const extra = process.env.OUTLOOK_SCOPES.split(',').map(s => s.trim()).filter(Boolean);
+      const disallowed = extra.filter(s => !requested.includes(s));
+      if (disallowed.length) {
+        failClosed(`Extraneous scopes not allowed under profile '${ACTIVE_SCOPE_PROFILE}': ${disallowed.join(', ')}`);
+      }
+      // Merge (idempotent)
+      requested = Array.from(new Set([...requested, ...extra]));
+    }
+
+    // Final filter to allowed list
+    return requested.filter(s => ALLOWED_SCOPES.includes(s));
+  }
+  // No profile: parse explicit scopes or fallback
   let scopes = process.env.OUTLOOK_SCOPES
     ? process.env.OUTLOOK_SCOPES.split(',').map(s => s.trim())
     : DEFAULT_SCOPES;
-  
-  // Filter to only allowed scopes
   scopes = scopes.filter(scope => ALLOWED_SCOPES.includes(scope));
-  
-  // Fallback to secure default if none valid
-  if (scopes.length === 0) {
-    scopes = DEFAULT_SCOPES;
-  }
-  
+  if (scopes.length === 0) scopes = DEFAULT_SCOPES;
   return scopes;
 };
+
+// Utility: Does granted scope set satisfy required (allowing ReadWrite supersets)?
+function scopeSatisfied(required, granted) {
+  if (granted.includes(required)) return true;
+  const supersets = {
+    'Mail.Read': 'Mail.ReadWrite',
+    'Calendars.Read': 'Calendars.ReadWrite',
+    'Contacts.Read': 'Contacts.ReadWrite',
+    'MailboxSettings.Read': 'MailboxSettings.ReadWrite'
+  };
+  const sup = supersets[required];
+  return sup ? granted.includes(sup) : false;
+}
+
+// Validate a tool's required scopes at runtime
+function validateToolScopes(toolName, requiredScopes, grantedScopes) {
+  if (!requiredScopes || requiredScopes.length === 0) return { ok: true };
+  const missing = requiredScopes.filter(req => !scopeSatisfied(req, grantedScopes));
+  if (missing.length === 0) return { ok: true };
+  return {
+    ok: false,
+    missing,
+    message: `Missing required scopes for tool '${toolName}': ${missing.join(', ')}. Current profile: ${ACTIVE_SCOPE_PROFILE || 'custom'}.`
+  };
+}
 
 module.exports = {
   ensureConfigSafe,
@@ -119,6 +190,10 @@ module.exports = {
     tokenStorePath: path.join(homeDir, '.outlook-mcp-tokens.json'),
     authServerUrl: 'http://localhost:3333'
   },
+  ACTIVE_SCOPE_PROFILE,
+  PROFILE_SCOPE_MAP,
+  validateToolScopes,
+  scopeSatisfied,
   
   // Microsoft Graph API
   // Can be overridden with GRAPH_API_ENDPOINT env var (e.g., for mock server: http://localhost:4000/v1.0/)

@@ -7,12 +7,14 @@ const contactsTools = [
   {
     name: 'list-contacts',
     description: 'List contacts with basic fields.',
+    requiredScopes: ['Contacts.Read'],
     inputSchema: { type: 'object', properties: { top: { type: 'number', minimum: 1, maximum: 100 } } },
     handler: handleListContacts
   },
   {
     name: 'create-contact',
     description: 'Create a new contact. Requires Contacts.ReadWrite.',
+    requiredScopes: ['Contacts.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -30,6 +32,7 @@ const contactsTools = [
   {
     name: 'update-contact',
     description: 'Update an existing contact by id. Requires Contacts.ReadWrite.',
+    requiredScopes: ['Contacts.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -48,6 +51,7 @@ const contactsTools = [
   {
     name: 'delete-contact',
     description: 'Delete a contact by id. Requires Contacts.ReadWrite.',
+    requiredScopes: ['Contacts.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

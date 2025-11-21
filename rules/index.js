@@ -102,6 +102,7 @@ const rulesTools = [
   {
     name: 'list-rules',
     description: 'Lists inbox rules in your Outlook account',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -117,6 +118,7 @@ const rulesTools = [
   {
     name: 'create-rule',
     description: 'Creates a new inbox rule',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -160,6 +162,7 @@ const rulesTools = [
   {
     name: 'edit-rule-sequence',
     description: 'Changes the execution order of an existing inbox rule',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

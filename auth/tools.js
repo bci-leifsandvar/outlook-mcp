@@ -111,6 +111,7 @@ const authTools = [
   {
     name: 'about',
     description: 'Returns information about this Outlook Assistant server',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {},
@@ -121,6 +122,7 @@ const authTools = [
   {
     name: 'authenticate',
     description: 'Authenticate with Microsoft Graph API to access Outlook data',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {
@@ -140,6 +142,7 @@ const authTools = [
   {
     name: 'check-auth-status',
     description: 'Check the current authentication status with Microsoft Graph API',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {},
