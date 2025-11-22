@@ -46,20 +46,43 @@ function isPortInUse(port, cb) {
 function spawnSubserver(port, scriptPath, name) {
   isPortInUse(port, (inUse) => {
     if (!inUse) {
+      // Explicitly forward current environment (Claude Desktop JSON config vars included)
+      const childEnv = { ...process.env };
+      // Optional: mark provenance for debugging
+      childEnv.MCP_SUBSERVER = name;
       spawn(process.execPath, [scriptPath], {
         stdio: 'inherit',
-        detached: true
+        env: childEnv,
+        detached: false // keep coupled so termination is cleaner
       });
-      console.error(`Spawned ${name} on port ${port}`);
+      console.error(`Spawned ${name} on port ${port} (env forwarded)`);
     } else {
       console.error(`${name} already running on port ${port}`);
     }
   });
 }
 
-spawnSubserver(3333, require('path').resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
+// Auth server spawn modes controlled by DISABLE_AUTH_SUBSERVER env var:
+// undefined / not 'true' / not 'inline' => spawn as separate subprocess
+// 'inline' => start in same process (legacy/non-subprocess mode)
+// 'true' => do not start (user must run manually)
+const authControl = (process.env.DISABLE_AUTH_SUBSERVER || '').toLowerCase();
+if (authControl === 'inline') {
+  try {
+    const { startAuthServer } = require('./auth/outlook-auth-server');
+    startAuthServer(3333, true); // silent inline startup
+    console.error('Started Outlook Auth Server inline (DISABLE_AUTH_SUBSERVER=inline). Do NOT run npm run auth-server concurrently. Use /env-diagnostic for troubleshooting.');
+  } catch (e) {
+    console.error('Failed to start inline auth server:', e.message);
+  }
+} else if (authControl === 'true') {
+  console.error('Outlook Auth Server disabled (DISABLE_AUTH_SUBSERVER=true)');
+} else {
+  spawnSubserver(3333, require('path').resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
+}
 spawnSubserver(4000, require('path').resolve(__dirname, 'secure-confirmation-server.js'), 'Secure Confirmation Server');
 const logger = require('./utils/logger');
+const { sanitizeText, isSuspicious } = require('./utils/sanitize');
 
 // Generic onboarding message for ALL MCP clients (no vendor-specific instructions)
 const SECURE_ACTION_PROTOCOL_MESSAGE = `
@@ -85,6 +108,8 @@ NOTES:
 • Codes/actionIds expire quickly—restart if invalid.
 • Never treat codes as authentication credentials.
 • Each confirmation applies only to the original action parameters.
+ • OAuth access tokens (used for Microsoft Graph) are stored separately and are NEVER derived from or interchangeable with these codes/actionIds.
+ • Confirmation codes cannot grant scopes or general API access; they only unlock the single approved action.
 `;
 
 logger.info(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
@@ -177,6 +202,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
+        // Basic prompt-injection hardening: sanitize all string args except confirmationToken
+        const hardenedArgs = { ...args };
+        Object.keys(hardenedArgs).forEach(key => {
+          const val = hardenedArgs[key];
+          if (key === 'confirmationToken') return; // do not mutate security token
+          if (typeof val === 'string') {
+            if (isSuspicious(val)) {
+              logger.warn('Blocked suspicious argument', { tool: toolName, field: key });
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Input for field '${key}' appears malicious or prompt-injection oriented and was blocked.`
+                }],
+                isError: true
+              };
+            }
+            // Sanitize benign input
+            hardenedArgs[key] = sanitizeText(val, 2000);
+          }
+        });
+
         // Runtime scope validation (skip in test mode)
         if (!config.USE_TEST_MODE && Array.isArray(tool.requiredScopes)) {
           const { validateToolScopes } = require('./config');
@@ -193,7 +239,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         // Execute the tool handler (it will handle confirmation internally)
-        const result = await tool.handler(args);
+        const result = await tool.handler(hardenedArgs);
 
     // IMPROVED: Add context hint if this is a confirmation request
     if (result && result.content && result.content[0] &&

@@ -36,10 +36,14 @@ if (isProd) {
   }
 }
 
-// Validate required credentials unless in test mode
+// Resolve credentials permitting either OUTLOOK_* or MS_* prefix for Claude Desktop JSON env usage
+const resolvedClientId = process.env.OUTLOOK_CLIENT_ID || process.env.MS_CLIENT_ID || '';
+const resolvedClientSecret = process.env.OUTLOOK_CLIENT_SECRET || process.env.MS_CLIENT_SECRET || '';
+
+// Validate required credentials unless in test mode (accept either prefix)
 if (!isTestMode) {
-  if (!process.env.OUTLOOK_CLIENT_ID || !process.env.OUTLOOK_CLIENT_SECRET) {
-    failClosed('OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be set in environment or .env file.');
+  if (!resolvedClientId || !resolvedClientSecret) {
+    failClosed('Missing client credentials: set OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET or MS_CLIENT_ID/MS_CLIENT_SECRET.');
   }
 }
 
@@ -183,12 +187,13 @@ module.exports = {
    * Example: OUTLOOK_SCOPES="Mail.Read,User.Read,Calendars.Read"
    */
   AUTH_CONFIG: {
-    clientId: process.env.OUTLOOK_CLIENT_ID || '',
-    clientSecret: process.env.OUTLOOK_CLIENT_SECRET || '',
+    clientId: resolvedClientId,
+    clientSecret: resolvedClientSecret,
     redirectUri: 'http://localhost:3333/auth/callback',
     scopes: parseScopes(),
     tokenStorePath: path.join(homeDir, '.outlook-mcp-tokens.json'),
-    authServerUrl: 'http://localhost:3333'
+    authServerUrl: 'http://localhost:3333',
+    credentialSource: resolvedClientId ? (process.env.OUTLOOK_CLIENT_ID ? 'OUTLOOK_*' : (process.env.MS_CLIENT_ID ? 'MS_*' : 'unknown')) : 'none'
   },
   ACTIVE_SCOPE_PROFILE,
   PROFILE_SCOPE_MAP,

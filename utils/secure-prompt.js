@@ -90,7 +90,7 @@ function promptForConfirmation({ actionType, fields, safeFields, globalTokenStor
   return {
     content: [{
       type: 'text',
-      text: `${promptText}\n\nConfirmation Mode: token\nSecurity code: ${token}\nRe-invoke the SAME tool with confirmationToken: "${token}" to proceed.`
+      text: `${promptText}\n\nConfirmation Mode: token\nSecurity code: ${token}\nRe-invoke the SAME tool with confirmationToken: "${token}" to proceed.\nNOTE: This short code is NOT an OAuth access token and cannot be used outside this single action.`
     }]
   };
 }

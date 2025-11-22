@@ -25,7 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
-    "dotenv": "^16.5.0",
+    "dotenv": "^16.6.1",
     "rxjs": "^7.8.2",
     "sanitize-html": "^2.17.0"
   },
@@ -40,7 +40,6 @@
   },
   "engineStrict": true,
   "jest": {
-    
     "moduleDirectories": [
       "node_modules",
       "<rootDir>"

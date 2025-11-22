@@ -31,44 +31,24 @@ async function handleSendEmail(args) {
   // Log attempt (before confirmation)
   const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
-  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken: _confirmationToken } = args;
+  const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken } = args;
   logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
   const { SECURE_PROMPT_MODE } = require('../config');
+  const { handleSecureConfirmation } = require('../utils/secure-confirmation');
   const sanitizeHtml = require('sanitize-html');
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE) {
-    // Use secure-confirmation-server for web-based confirmation
-    const axios = require('axios');
-    if (!args.confirmationId) {
-      // Create a pending confirmation
-      const response = await axios.post('http://localhost:4000/api/create-confirmation', {
-        to,
-        subject,
-        body
-      });
-      const { actionId, confirmUrl } = response.data;
-      return {
-        content: [{
-          type: 'text',
-          text: `SECURE ACTION: Please confirm this email by visiting: ${confirmUrl}`
-        }],
-        requiresConfirmation: true,
-        confirmationId: actionId
-      };
-    } else {
-      // Check confirmation status
-      const response = await axios.get(`http://localhost:4000/api/confirmation-status/${args.confirmationId}`);
-      if (!response.data.confirmed) {
-        return {
-          content: [{
-            type: 'text',
-            text: 'Email confirmation not yet completed. Please visit the confirmation page.'
-          }],
-          requiresConfirmation: true
-        };
-      }
-      // Proceed to send
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'send-email',
+      fields: [to || '', subject || '', (body || '').slice(0, 200)],
+      confirmationToken,
+      globalTokenStore: '__sendEmailTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nAction: send-email\nTo: ${to}\nSubject: ${subject}\nBody length: ${(body || '').length} chars\nIf you approve, provide the confirmation token.`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult; // Will include secure action prompt
     }
+    // Proceed after confirmationAccepted
   }
   
   // Validate required parameters

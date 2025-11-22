@@ -41,8 +41,9 @@ class TokenStorage {
     this.config = {
       tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-tokens.json'),
       consentStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-consent.json'),
-      clientId: process.env.MS_CLIENT_ID,
-      clientSecret: process.env.MS_CLIENT_SECRET,
+      // Accept either OUTLOOK_* or MS_* env prefixes (Claude Desktop JSON config compatibility)
+      clientId: process.env.MS_CLIENT_ID || process.env.OUTLOOK_CLIENT_ID,
+      clientSecret: process.env.MS_CLIENT_SECRET || process.env.OUTLOOK_CLIENT_SECRET,
       redirectUri: process.env.MS_REDIRECT_URI || 'http://localhost:3333/auth/callback',
       scopes: (process.env.MS_SCOPES || 'offline_access User.Read Mail.Read').split(' '),
       tokenEndpoint: process.env.MS_TOKEN_ENDPOINT || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -56,7 +57,10 @@ class TokenStorage {
     this._loadConsentHistory();
 
     if (!this.config.clientId || !this.config.clientSecret) {
-      logger.warn('MS_CLIENT_ID or MS_CLIENT_SECRET is not configured. Token operations might fail.');
+      logger.warn('Client credentials missing (MS_* or OUTLOOK_*). Token operations will fail until set.');
+    } else {
+      const source = process.env.MS_CLIENT_ID ? 'MS_*' : (process.env.OUTLOOK_CLIENT_ID ? 'OUTLOOK_*' : 'unknown');
+      logger.info('TokenStorage credential source detected', { source });
     }
   }
 
