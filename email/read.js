@@ -4,6 +4,7 @@
 const config = require('../config');
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
+const { sanitizeEmail } = require('../utils/pii-sanitizer');
 
 /**
  * Read email handler
@@ -13,6 +14,8 @@ const { ensureAuthenticated } = require('../auth');
 async function handleReadEmail(args) {
   const emailId = args.id;
   
+  console.log('--- DEBUG: Raw email ID received ---', emailId);
+
   if (!emailId) {
     return {
       content: [{ 
@@ -27,7 +30,8 @@ async function handleReadEmail(args) {
     const accessToken = await ensureAuthenticated();
     
     // Make API call to get email details
-    const endpoint = `me/messages/${encodeURIComponent(emailId)}`;
+    const endpoint = `me/messages/${emailId}`;
+    console.log('--- DEBUG: Raw endpoint for API call ---', endpoint);
     const queryParams = {
       $select: config.EMAIL_DETAIL_FIELDS
     };
@@ -78,7 +82,7 @@ ${body}`;
         content: [
           {
             type: 'text',
-            text: formattedEmail
+            text: sanitizeEmail(formattedEmail)
           }
         ]
       };
@@ -86,6 +90,16 @@ ${body}`;
       console.error(`Error reading email: ${error.message}`);
       
       // Improved error handling with more specific messages
+      if (error.message.includes('ErrorInvalidIdMalformed')) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Failed to read email: The provided ID is malformed. Please ensure you are using a valid message ID.`
+          }],
+          isError: true
+        };
+      }
+      
       if (error.message.includes("doesn't belong to the targeted mailbox")) {
         return {
           content: [

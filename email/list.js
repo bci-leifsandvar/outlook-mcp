@@ -5,6 +5,7 @@ const config = require('../config');
 const { callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { resolveFolderPath } = require('./folder-utils');
+const { sanitizeEmail } = require('../utils/pii-sanitizer');
 
 /**
  * List emails handler
@@ -41,13 +42,14 @@ async function handleListEmails(args) {
       };
     }
     
-    // Format results
+    // Format results, redacting email addresses
     const emailList = response.value.map((email, index) => {
       const sender = email.from ? email.from.emailAddress : { name: 'Unknown', address: 'unknown' };
       const date = new Date(email.receivedDateTime).toLocaleString();
       const readStatus = email.isRead ? '' : '[UNREAD] ';
       
-      return `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${email.id}\n`;
+      const rawString = `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${email.id}\n`;
+      return sanitizeEmail(rawString);
     }).join('\n');
     
     return {

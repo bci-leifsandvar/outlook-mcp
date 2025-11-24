@@ -4,6 +4,9 @@ if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING &&
     !process.env.OPENAI_MCP && !process.env.MCP_CLIENT) {
   require('dotenv').config();
 }
+
+const logger = require('./utils/logger');
+
 /**
  * Outlook MCP Server - Main entry point
  * FIXED: Clearer onboarding instructions for secure confirmation flow
@@ -46,18 +49,24 @@ function isPortInUse(port, cb) {
 function spawnSubserver(port, scriptPath, name) {
   isPortInUse(port, (inUse) => {
     if (!inUse) {
-      // Explicitly forward current environment (Claude Desktop JSON config vars included)
-      const childEnv = { ...process.env };
-      // Optional: mark provenance for debugging
-      childEnv.MCP_SUBSERVER = name;
-      spawn(process.execPath, [scriptPath], {
-        stdio: 'inherit',
-        env: childEnv,
-        detached: false // keep coupled so termination is cleaner
+      const subProcess = spawn(process.execPath, [scriptPath], {
+        stdio: 'pipe', // Use 'pipe' to capture output
+        detached: true,
+        env: { ...process.env }
       });
-      console.error(`Spawned ${name} on port ${port} (env forwarded)`);
+      logger.info(`Spawned ${name} on port ${port}`, { pid: subProcess.pid });
+
+      // Log output from the subprocess
+      subProcess.stdout.on('data', (data) => {
+        logger.info(`[${name} stdout]`, { output: data.toString().trim() });
+      });
+      subProcess.stderr.on('data', (data) => {
+        logger.error(`[${name} stderr]`, { error: data.toString().trim() });
+      });
+
+      subProcess.unref(); // Allow parent to exit independently
     } else {
-      console.error(`${name} already running on port ${port}`);
+      logger.warn(`${name} already running on port ${port}`);
     }
   });
 }
@@ -71,17 +80,16 @@ if (authControl === 'inline') {
   try {
     const { startAuthServer } = require('./auth/outlook-auth-server');
     startAuthServer(3333, true); // silent inline startup
-    console.error('Started Outlook Auth Server inline (DISABLE_AUTH_SUBSERVER=inline). Do NOT run npm run auth-server concurrently. Use /env-diagnostic for troubleshooting.');
+    logger.warn('Started Outlook Auth Server inline (DISABLE_AUTH_SUBSERVER=inline). Do NOT run npm run auth-server concurrently. Use /env-diagnostic for troubleshooting.');
   } catch (e) {
-    console.error('Failed to start inline auth server:', e.message);
+    logger.error('Failed to start inline auth server:', e.message);
   }
 } else if (authControl === 'true') {
-  console.error('Outlook Auth Server disabled (DISABLE_AUTH_SUBSERVER=true)');
+  logger.warn('Outlook Auth Server disabled (DISABLE_AUTH_SUBSERVER=true)');
 } else {
   spawnSubserver(3333, require('path').resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
 }
 spawnSubserver(4000, require('path').resolve(__dirname, 'secure-confirmation-server.js'), 'Secure Confirmation Server');
-const logger = require('./utils/logger');
 const { sanitizeText, isSuspicious } = require('./utils/sanitize');
 
 // Generic onboarding message for ALL MCP clients (no vendor-specific instructions)
@@ -101,7 +109,7 @@ TOKEN MODE:
 
 CAPTCHA MODE:
 • Message includes a URL like http://localhost:4000/confirm/<actionId>
-• Instruct user to open it in a browser and enter the displayed code.
+• Instruct user to open it in a browser, complete the captcha, and get a success message.
 • After completion, re-invoke the SAME tool with confirmationToken: "<actionId>".
 
 NOTES:

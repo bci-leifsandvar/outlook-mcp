@@ -10,12 +10,15 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleDeleteEvent(args) {
+  const { eventId, confirmationToken } = args;
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
+
   // Log attempt (before confirmation)
   logSensitiveAction('deleteEvent', args, 'unknown', isSuspicious(eventId));
-  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
+
   require('../config').ensureConfigSafe();
-  const { eventId, confirmationToken } = args;
+
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE) {

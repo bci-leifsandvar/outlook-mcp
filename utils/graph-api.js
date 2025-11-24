@@ -39,46 +39,17 @@ function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) 
       finalUrl = path;
       logger.debug('Using full URL from nextLink', { finalUrl });
     } else {
-      // Build URL from path and queryParams
-      // Encode path segments properly
-      const encodedPath = path.split('/')
-        .map(segment => encodeURIComponent(segment))
-        .join('/');
-      
-      // Build query string from parameters with special handling for OData filters
+      // Build URL from path and queryParams, avoiding double-encoding.
+      // The path from the tool (e.g., 'me/messages/ENCODED_ID') is trusted to be correctly encoded.
       let queryString = '';
       if (Object.keys(queryParams).length > 0) {
-        // Handle $filter parameter specially to ensure proper URI encoding
-        const filter = queryParams.$filter;
-        if (filter) {
-          delete queryParams.$filter; // Remove from regular params
-        }
-        
-        // Build query string with proper encoding for regular params
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(queryParams)) {
-          params.append(key, value);
-        }
-        
-        queryString = params.toString();
-        
-        // Add filter parameter separately with proper encoding
-        if (filter) {
-          if (queryString) {
-            queryString += `&$filter=${encodeURIComponent(filter)}`;
-          } else {
-            queryString = `$filter=${encodeURIComponent(filter)}`;
-          }
-        }
-        
-        if (queryString) {
-          queryString = `?${queryString}`;
-        }
-        
+        const params = new URLSearchParams(queryParams);
+        queryString = '?' + params.toString();
         logger.debug('Graph API query string', { queryString });
       }
       
-      finalUrl = `${config.GRAPH_API_ENDPOINT}${encodedPath}${queryString}`;
+      // Combine base, path, and query without further encoding the path.
+      finalUrl = `${config.GRAPH_API_ENDPOINT}${path}${queryString}`;
       logger.debug('Graph API full URL', { finalUrl });
     }
     
