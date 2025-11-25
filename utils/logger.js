@@ -1,7 +1,9 @@
 const { maskPIIinObject } = require('./sanitize');
+const { sanitizeForLogging } = require('./log-sanitizer');
 
 function baseLog(level, message, details = {}) {
-  const masked = maskPIIinObject(details);
+  const sanitizedDetails = sanitizeForLogging(details);
+  const masked = maskPIIinObject(sanitizedDetails);
   const entry = {
     timestamp: new Date().toISOString(),
     level,

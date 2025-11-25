@@ -124,8 +124,8 @@ logger.info(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
 logger.info(`Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
 logger.info('SECURE ACTION PROTOCOL MESSAGE', { onboarding: SECURE_ACTION_PROTOCOL_MESSAGE });
 
-// Combine all tools
-const TOOLS = [
+// Combine and filter tools based on granted scopes
+const allTools = [
   ...authTools,
   ...calendarTools,
   ...emailTools,
@@ -134,6 +134,18 @@ const TOOLS = [
   ...mailboxTools,
   ...contactsTools
 ];
+
+const grantedScopes = config.AUTH_CONFIG.scopes;
+const TOOLS = allTools.filter(tool => {
+    if (!tool.requiredScopes || tool.requiredScopes.length === 0) {
+        return true; // Always include tools that don't require scopes
+    }
+    const { ok } = config.validateToolScopes(tool.name, tool.requiredScopes, grantedScopes);
+    if (!ok) {
+        logger.warn(`Excluding tool '${tool.name}' due to missing scopes.`);
+    }
+    return ok;
+});
 
 // Debug: Print all registered tool names and count
 logger.debug('Registered tools', { tools: TOOLS.map(t => t.name) });
