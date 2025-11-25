@@ -10,7 +10,28 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleCancelEvent(args) {
-  const { eventId, comment } = args;
+  const { logSensitiveAction } = require('../utils/sensitive-log');
+  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
+  // Log attempt (before confirmation)
+  logSensitiveAction('cancelEvent', args, 'unknown', isSuspicious(args.eventId));
+  require('../config').ensureConfigSafe();
+  const { eventId, comment, confirmationToken } = args;
+  // Secure prompting mode (from config)
+  const { SECURE_PROMPT_MODE } = require('../config');
+  if (SECURE_PROMPT_MODE) {
+    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'cancelEvent',
+      fields: [eventId, comment],
+      confirmationToken,
+      globalTokenStore: '__cancelEventTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nEvent ID: ${eventId}`
+    });
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
+    }
+    // Proceed to cancel event if confirmationAccepted
+  }
 
   if (!eventId) {
     return {

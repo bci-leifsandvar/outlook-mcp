@@ -1,6 +1,6 @@
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
-const { secureConfirmation } = require('../utils/secure-confirmation');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 const editRuleSequenceTool = {
   name: 'rules_editSequence',
@@ -17,14 +17,16 @@ const editRuleSequenceTool = {
   handler: async (args) => {
     const { ruleId, sequence, confirmationToken } = args;
 
-    const confirmed = await secureConfirmation({
-      toolName: 'rules_editSequence',
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'rules_editSequence',
+      fields: [ruleId, sequence],
       confirmationToken,
-      details: { ruleId, sequence }
+      globalTokenStore: '__editRuleSequenceTokens',
+      promptText: `SECURE ACTION: Human confirmation required for editing rule sequence.\nRule ID: ${ruleId}\nNew Sequence: ${sequence}`
     });
 
-    if (!confirmed) {
-      return confirmed; // Return confirmation request
+    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult;
     }
 
     try {
