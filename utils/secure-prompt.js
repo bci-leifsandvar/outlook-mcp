@@ -6,11 +6,13 @@
  */
 const crypto = require('crypto');
 const http = require('http');
+const config = require('../config');
+const { SECURE_CONFIRM_SERVER_BASE_URL, SECURE_CONFIRM_PORT, SERVER_HOST } = config;
 
 // Confirmation mode: 'token' (default) or 'captcha'
 const confirmMode = (process.env.SECURE_CONFIRM_MODE || 'token').toLowerCase();
 const useCaptcha = confirmMode === 'captcha';
-const CAPTCHA_PORT = process.env.SECURE_CONFIRM_PORT || 4000;
+const CAPTCHA_PORT = SECURE_CONFIRM_PORT;
 
 function getActionKey(fields) {
   return crypto.createHash('sha256').update(fields.join('|')).digest('hex');
@@ -34,7 +36,7 @@ function promptForConfirmation({ actionType, fields, safeFields, globalTokenStor
     });
 
     const options = {
-      hostname: 'localhost',
+      hostname: SERVER_HOST,
       port: CAPTCHA_PORT,
       path: '/api/create-confirmation',
       method: 'POST',
@@ -75,7 +77,7 @@ function promptForConfirmation({ actionType, fields, safeFields, globalTokenStor
         resolve({
           content: [{
             type: 'text',
-            text: `Secure confirmation server not reachable at http://localhost:${CAPTCHA_PORT}. Start it (node secure-confirmation-server.js or npm start if included) and retry.`
+            text: `Secure confirmation server not reachable at ${SECURE_CONFIRM_SERVER_BASE_URL}. Start it (node secure-confirmation-server.js or npm start if included) and retry.`
           }]
         });
       });
@@ -111,7 +113,7 @@ function validateConfirmationToken({ fields, globalTokenStore, confirmationToken
     }
     // Query status from server
     return new Promise((resolve) => {
-      http.get(`http://localhost:${CAPTCHA_PORT}/api/confirmation-status/${entry.actionId}`, (res) => {
+      http.get(`${SECURE_CONFIRM_SERVER_BASE_URL}/api/confirmation-status/${entry.actionId}`, (res) => {
         let data = '';
         res.on('data', chunk => (data += chunk));
         res.on('end', () => {

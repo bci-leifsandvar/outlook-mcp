@@ -29,7 +29,7 @@ async function handleSendEmail(args) {
   rateLimitStore[userKey].push(now);
   const { logSensitiveAction } = require('../utils/sensitive-log');
   // Log attempt (before confirmation)
-  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken } = args;
   logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
@@ -81,85 +81,72 @@ async function handleSendEmail(args) {
     }
   }
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Format recipients
-    const toRecipients = to.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Format recipients
+  const toRecipients = to.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  });
+  
+  const ccRecipients = cc ? cc.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  }) : [];
+  
+  const bccRecipients = bcc ? bcc.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  }) : [];
+  
+  // Sanitize HTML body if needed
+  let sanitizedBody = body;
+  let contentType = 'text';
+  if (body.includes('<html') || body.includes('<body') || body.includes('<div')) {
+    sanitizedBody = sanitizeHtml(body, {
+      allowedTags: sanitizeHtml.defaults.allowedTags,
+      allowedAttributes: sanitizeHtml.defaults.allowedAttributes
     });
-    
-    const ccRecipients = cc ? cc.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
-    }) : [];
-    
-    const bccRecipients = bcc ? bcc.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
-    }) : [];
-    
-    // Sanitize HTML body if needed
-    let sanitizedBody = body;
-    let contentType = 'text';
-    if (body.includes('<html') || body.includes('<body') || body.includes('<div')) {
-      sanitizedBody = sanitizeHtml(body, {
-        allowedTags: sanitizeHtml.defaults.allowedTags,
-        allowedAttributes: sanitizeHtml.defaults.allowedAttributes
-      });
-      contentType = 'html';
-    }
-    // Prepare email object
-    const emailObject = {
-      message: {
-        subject,
-        body: {
-          contentType,
-          content: sanitizedBody
-        },
-        toRecipients,
-        ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
-        bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
-        importance
-      },
-      saveToSentItems
-    };
-    
-    // Make API call to send email
-    await callGraphAPI(accessToken, 'POST', 'me/sendMail', emailObject);
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${sanitizedBody.length} characters`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'authenticate' tool first." }]
-      };
-    }
-    // Sanitize error message for client
-    return {
-      content: [{ type: 'text', text: 'Error sending email. Please check your input and try again.' }],
-      isError: true
-    };
+    contentType = 'html';
   }
+  // Prepare email object
+  const emailObject = {
+    message: {
+      subject,
+      body: {
+        contentType,
+        content: sanitizedBody
+      },
+      toRecipients,
+      ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
+      bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
+      importance
+    },
+    saveToSentItems
+  };
+  
+  // Make API call to send email
+  await callGraphAPI(accessToken, 'POST', 'me/sendMail', emailObject);
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${sanitizedBody.length} characters`
+    }]
+  };
 }
 
 module.exports = handleSendEmail;

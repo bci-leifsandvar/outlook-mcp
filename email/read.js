@@ -131,7 +131,9 @@ async function handleReadEmail(args) {
     if (error.message.includes("doesn't belong to the targeted mailbox")) {
       return { content: [{ type: 'text', text: 'The email ID seems invalid or doesn\'t belong to your mailbox. Please try with a different email ID.' }] };
     }
-    return { content: [{ type: 'text', text: `Failed to read email: ${error.message}` }], isError: true };
+    const logger = require('../utils/logger');
+    logger.error('Failed to read email', { error: error.message, stack: error.stack });
+    return { content: [{ type: 'text', text: 'An unexpected error occurred while reading the email.' }], isError: true };
   }
 }
 

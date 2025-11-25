@@ -6,8 +6,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const path = require('path');
+const config = require('./config');
+const { SECURE_CONFIRM_SERVER_BASE_URL, SECURE_CONFIRM_PORT } = config;
 const app = express();
-const PORT = process.env.SECURE_CONFIRM_PORT || 4000;
+const PORT = SECURE_CONFIRM_PORT;
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -128,7 +130,7 @@ app.post('/api/create-confirmation', bodyParser.json(), (req, res) => {
   const actionId = crypto.randomBytes(8).toString('hex');
   const code = crypto.randomBytes(3).toString('hex').toUpperCase();
   pendingActions[actionId] = { to, subject, body, code, confirmed: false };
-  res.json({ actionId, code, confirmUrl: `http://localhost:${PORT}/confirm/${actionId}` });
+  res.json({ actionId, code, confirmUrl: `${SECURE_CONFIRM_SERVER_BASE_URL}/confirm/${actionId}` });
 });
 
 // API to check confirmation status
@@ -141,7 +143,7 @@ app.get('/api/confirmation-status/:actionId', (req, res) => {
 
 const serverInstance = app.listen(PORT, () => {
   // This log is captured by the main process and routed to the logger.
-  process.stdout.write(`Secure Confirmation Server running at http://localhost:${PORT}\n`);
+  process.stdout.write(`Secure Confirmation Server running at ${SECURE_CONFIRM_SERVER_BASE_URL}\n`);
 });
 
 module.exports = { app, serverInstance, pendingActions };

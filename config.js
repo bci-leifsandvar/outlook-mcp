@@ -92,7 +92,7 @@ const PROFILE_SCOPE_MAP = {
   ],
   'admin-plus': [
     'openid', 'profile', 'email', 'User.Read', 'offline_access',
-    'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite', 'MailboxSettings.ReadWrite'
+    'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite', 'MailboxSettings.Read.Write'
   ],
   constrained: [
     'openid', 'profile', 'email', 'User.Read',
@@ -164,8 +164,20 @@ function validateToolScopes(toolName, requiredScopes, grantedScopes) {
   };
 }
 
+const SERVER_HOST = process.env.SERVER_HOST || 'localhost';
+const AUTH_PORT = process.env.AUTH_PORT || 3333;
+const SECURE_CONFIRM_PORT = process.env.SECURE_CONFIRM_PORT || 4000;
+
+const AUTH_SERVER_BASE_URL = `http://${SERVER_HOST}:${AUTH_PORT}`;
+const SECURE_CONFIRM_SERVER_BASE_URL = `http://${SERVER_HOST}:${SECURE_CONFIRM_PORT}`;
+
 module.exports = {
   ensureConfigSafe,
+  SERVER_HOST,
+  AUTH_PORT,
+  SECURE_CONFIRM_PORT,
+  AUTH_SERVER_BASE_URL,
+  SECURE_CONFIRM_SERVER_BASE_URL,
   
   // Secure prompting mode (explicit user confirmation for sensitive actions)
   // Enabled by default unless explicitly set to 'false'
@@ -189,10 +201,10 @@ module.exports = {
   AUTH_CONFIG: {
     clientId: resolvedClientId,
     clientSecret: resolvedClientSecret,
-    redirectUri: 'http://localhost:3333/auth/callback',
+    redirectUri: `${AUTH_SERVER_BASE_URL}/auth/callback`,
     scopes: parseScopes(),
     tokenStorePath: path.join(homeDir, '.outlook-mcp-tokens.json'),
-    authServerUrl: 'http://localhost:3333',
+    authServerUrl: AUTH_SERVER_BASE_URL,
     credentialSource: resolvedClientId ? (process.env.OUTLOOK_CLIENT_ID ? 'OUTLOOK_*' : (process.env.MS_CLIENT_ID ? 'MS_*' : 'unknown')) : 'none'
   },
   ACTIVE_SCOPE_PROFILE,

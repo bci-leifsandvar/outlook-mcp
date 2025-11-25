@@ -12,39 +12,21 @@ const { ensureAuthenticated } = require('../auth');
 async function handleListRules(args) {
   const includeDetails = args.includeDetails === true;
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Get all inbox rules
-    const rules = await getInboxRules(accessToken);
-    
-    // Format the rules based on detail level
-    const formattedRules = formatRulesList(rules, includeDetails);
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: formattedRules
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Error listing rules: ${error.message}`
-      }]
-    };
-  }
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Get all inbox rules
+  const rules = await getInboxRules(accessToken);
+  
+  // Format the rules based on detail level
+  const formattedRules = formatRulesList(rules, includeDetails);
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: formattedRules
+    }]
+  };
 }
 
 /**

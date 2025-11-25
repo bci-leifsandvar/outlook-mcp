@@ -29,28 +29,18 @@ const editRuleSequenceTool = {
       return confirmationResult;
     }
 
-    try {
-      const accessToken = await ensureAuthenticated();
-      const endpoint = `me/mailFolders/inbox/messageRules/${ruleId}`;
-      const data = { sequence };
+    const accessToken = await ensureAuthenticated();
+    const endpoint = `me/mailFolders/inbox/messageRules/${ruleId}`;
+    const data = { sequence };
 
-      await callGraphAPI(accessToken, 'PATCH', endpoint, data);
+    await callGraphAPI(accessToken, 'PATCH', endpoint, data);
 
-      return {
-        content: [{
-          type: 'text',
-          text: `Successfully updated sequence for rule ${ruleId} to ${sequence}.`
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Error editing rule sequence: ${error.message}`
-        }],
-        isError: true
-      };
-    }
+    return {
+      content: [{
+        type: 'text',
+        text: `Successfully updated sequence for rule ${ruleId} to ${sequence}.`
+      }]
+    };
   }
 };
 

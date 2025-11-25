@@ -5,7 +5,11 @@ process.env.USE_TEST_MODE = 'true';
 process.env.SECURE_PROMPT_MODE = 'true';
 process.env.SECURE_CONFIRM_MODE = 'captcha';
 
+const path = require('path');
+process.env.NODE_CONFIG_DIR = path.resolve(__dirname, '../');
+
 const http = require('http');
+const { SECURE_CONFIRM_SERVER_BASE_URL } = require('../config');
 const { serverInstance } = require('../secure-confirmation-server.js');
 const handleCreateEvent = require('../calendar/create.js');
 
@@ -53,10 +57,10 @@ describe('Captcha confirmation flow (createEvent)', () => {
   test('Requires captcha confirmation and completes after browser flow', async () => {
     // First call - should produce confirmation URL
     const first = await handleCreateEvent(baseArgs);
-    expect(first.content[0].text).toMatch(/http:\/\/localhost:4000\/confirm\//);
+    expect(first.content[0].text).toMatch(new RegExp(`${SECURE_CONFIRM_SERVER_BASE_URL}/confirm/`));
 
     // Extract actionId from URL
-    const urlMatch = first.content[0].text.match(/http:\/\/localhost:4000\/confirm\/([a-f0-9]{16})/i);
+    const urlMatch = first.content[0].text.match(new RegExp(`${SECURE_CONFIRM_SERVER_BASE_URL}/confirm/([a-f0-9]{16})`, 'i'));
     expect(urlMatch).not.toBeNull();
     const actionId = urlMatch[1];
 
@@ -67,12 +71,12 @@ describe('Captcha confirmation flow (createEvent)', () => {
     expect(awaiting).toBe(true);
 
     // Simulate user visiting page and submitting code
-    const page = await httpGet(`http://localhost:4000/confirm/${actionId}`);
+    const page = await httpGet(`${SECURE_CONFIRM_SERVER_BASE_URL}/confirm/${actionId}`);
     expect(page.status).toBe(200);
     const codeMatch = page.data.match(/<b>([A-F0-9]{6})<\/b>/);
     expect(codeMatch).not.toBeNull();
     const code = codeMatch[1];
-    const submit = await httpPost(`http://localhost:4000/confirm/${actionId}`, { code });
+    const submit = await httpPost(`${SECURE_CONFIRM_SERVER_BASE_URL}/confirm/${actionId}`, { code });
     expect(submit.data).toMatch(/Confirmed!/);
 
     // Third call with confirmationToken after user confirmation -> should succeed

@@ -288,10 +288,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   } catch (error) {
     logger.error(`Tool execution error: ${error.message}`, { toolName, error: error.stack });
+    // For specific, safe-to-expose errors, we can pass them through
+    if (error.message === 'Authentication required') {
+      return {
+        content: [{
+          type: 'text',
+          text: "Authentication required. Please use the 'authenticate' tool first."
+        }],
+        isError: true
+      };
+    }
     return {
       content: [{
         type: 'text',
-        text: `Error executing tool '${toolName}': ${error.message}`
+        text: `An unexpected error occurred while executing tool '${toolName}'. Please check server logs for details.`
       }],
       isError: true
     };

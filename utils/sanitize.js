@@ -1,10 +1,14 @@
+const sanitizeHtml = require('sanitize-html');
+
 // Mask email addresses and simple PII patterns
 function maskPII(input) {
   if (typeof input !== 'string') return input;
   // Mask email addresses
   let masked = input.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email]');
-  // Mask simple names (e.g., John Doe)
-  masked = masked.replace(/\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g, '[name]');
+  // Mask common name formats (e.g., John Doe, John, Doe)
+  masked = masked.replace(/\b([A-Z][a-z]+(\s[A-Z][a-z]+)?)\b/g, '[name]');
+  // Mask phone numbers (North American format)
+  masked = masked.replace(/(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g, '[phone]');
   return masked;
 }
 
@@ -13,7 +17,13 @@ function maskPIIinObject(obj) {
   if (Array.isArray(obj)) return obj.map(maskPIIinObject);
   if (obj && typeof obj === 'object') {
     const out = {};
-    for (const k in obj) out[k] = maskPIIinObject(obj[k]);
+    for (const k in obj) {
+      if (k === 'subject') {
+        out[k] = '[meeting subject]';
+      } else {
+        out[k] = maskPIIinObject(obj[k]);
+      }
+    }
     return out;
   }
   return obj;
@@ -35,13 +45,11 @@ const SUSPICIOUS_PATTERNS = [
 
 function sanitizeText(input, maxLength = 500) {
   if (typeof input !== 'string') return '';
-  let sanitized = input.slice(0, maxLength);
-  // Remove suspicious patterns
-  for (const pattern of SUSPICIOUS_PATTERNS) {
-    sanitized = sanitized.replace(pattern, '[filtered]');
-  }
-  // Escape angle brackets
-  sanitized = sanitized.replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
+  const truncated = input.slice(0, maxLength);
+  const sanitized = sanitizeHtml(truncated, {
+    allowedTags: [],
+    allowedAttributes: {}
+  });
   return sanitized;
 }
 

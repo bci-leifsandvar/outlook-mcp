@@ -12,7 +12,7 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
-  const { sanitizeText: _sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
   
@@ -89,52 +89,34 @@ async function handleCreateRule(args) {
     };
   }
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Create rule
-    const result = await createInboxRule(accessToken, {
-      name,
-      fromAddresses,
-      containsSubject,
-      hasAttachments,
-      moveToFolder,
-      markAsRead,
-      isEnabled,
-      sequence
-    });
-    
-    let responseText = result.message;
-    
-    // Add a tip about sequence if it wasn't provided
-    if (!sequence && !result.error) {
-      responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first.";
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: responseText
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Error creating rule: ${error.message}`
-      }]
-    };
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Create rule
+  const result = await createInboxRule(accessToken, {
+    name,
+    fromAddresses,
+    containsSubject,
+    hasAttachments,
+    moveToFolder,
+    markAsRead,
+    isEnabled,
+    sequence
+  });
+  
+  let responseText = result.message;
+  
+  // Add a tip about sequence if it wasn't provided
+  if (!sequence && !result.error) {
+    responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first.";
   }
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: responseText
+    }]
+  };
 }
 
 /**

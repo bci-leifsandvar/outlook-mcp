@@ -8,32 +8,12 @@ const url = require('url');
 const querystring = require('querystring');
 const https = require('https');
 const fs = require('fs');
-const path = require('path');
+const config = require('../config');
+const { AUTH_CONFIG, AUTH_SERVER_BASE_URL, AUTH_PORT } = config;
 
-function startAuthServer(port = 3333, silent = false) {
+function startAuthServer(port = AUTH_PORT, silent = false) {
   const logger = require('../utils/logger');
   if (!silent) logger.info('Starting Outlook Authentication Server');
-
-  // Authentication configuration
-  // Support both MS_* and OUTLOOK_* env prefixes for Claude Desktop configuration
-  const resolvedClientId = process.env.MS_CLIENT_ID || process.env.OUTLOOK_CLIENT_ID || '';
-  const resolvedClientSecret = process.env.MS_CLIENT_SECRET || process.env.OUTLOOK_CLIENT_SECRET || '';
-  const credentialSource = process.env.MS_CLIENT_ID ? 'MS_*' : (process.env.OUTLOOK_CLIENT_ID ? 'OUTLOOK_*' : 'none');
-  const AUTH_CONFIG = {
-    clientId: resolvedClientId, // Client ID from either prefix
-    clientSecret: resolvedClientSecret, // Client Secret from either prefix
-    redirectUri: 'http://localhost:3333/auth/callback',
-    scopes: [
-      'offline_access',
-      'User.Read',
-      'Mail.Read',
-      'Mail.Send',
-      'Calendars.Read',
-      'Calendars.ReadWrite',
-      'Contacts.Read'
-    ],
-    tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE, '.outlook-mcp-tokens.json')
-  };
 
   // Create HTTP server
   const server = http.createServer((req, res) => {
@@ -46,7 +26,7 @@ function startAuthServer(port = 3333, silent = false) {
       // Simple diagnostic endpoint (non-sensitive) to verify env ingestion
       const mask = (v) => v ? `${v.slice(0, 8)}...` : '';
       const info = {
-        credentialSource,
+        credentialSource: AUTH_CONFIG.credentialSource,
         clientIdPresent: !!AUTH_CONFIG.clientId,
         clientIdPrefix: AUTH_CONFIG.clientId ? AUTH_CONFIG.clientId.split('-')[0] : null,
         envKeysPresent: ['MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'OUTLOOK_CLIENT_ID', 'OUTLOOK_CLIENT_SECRET'].filter(k => !!process.env[k]),
@@ -228,7 +208,7 @@ function startAuthServer(port = 3333, silent = false) {
         state: stateToken
       };
       const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${querystring.stringify(authParams)}`;
-      logger.info('Redirecting to Microsoft login', { authUrl, credentialSource });
+      logger.info('Redirecting to Microsoft login', { authUrl, credentialSource: AUTH_CONFIG.credentialSource });
       // Set state token in cookie
       res.writeHead(302, {
         'Location': authUrl,
@@ -256,7 +236,7 @@ function startAuthServer(port = 3333, silent = false) {
             <p>Don't navigate here directly. Instead, use the <code>authenticate</code> tool in Claude to start the authentication process.</p>
             <p>Make sure you've set the <code>MS_CLIENT_ID</code> and <code>MS_CLIENT_SECRET</code> environment variables.</p>
           </div>
-          <p>Server is running at http://localhost:3333</p>
+          <p>Server is running at ${AUTH_SERVER_BASE_URL}</p>
         </body>
       </html>
     `);
@@ -333,10 +313,10 @@ function startAuthServer(port = 3333, silent = false) {
   server.listen(port, () => {
     if (!silent) {
       // These logs are captured by the main process and routed to the logger.
-      process.stdout.write(`Authentication server running at http://localhost:${port}\n`);
+      process.stdout.write(`Authentication server running at ${AUTH_SERVER_BASE_URL}\n`);
       process.stdout.write(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}\n`);
       process.stdout.write(`Token store path: ${AUTH_CONFIG.tokenStorePath}\n`);
-      process.stdout.write(`Credential source: ${credentialSource}\n`);
+      process.stdout.write(`Credential source: ${AUTH_CONFIG.credentialSource}\n`);
       if (!AUTH_CONFIG.clientId || !AUTH_CONFIG.clientSecret) {
         process.stdout.write('Warning: Microsoft Graph API credentials are not set. Provide OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET or MS_CLIENT_ID/MS_CLIENT_SECRET.\n');
       }
