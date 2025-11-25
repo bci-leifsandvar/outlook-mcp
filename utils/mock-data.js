@@ -20,7 +20,7 @@ function simulateGraphAPIResponse(method, path, _data, _queryParams) {
         // Single email response
         return {
           id: 'simulated-email-id',
-          subject: 'Simulated Email Subject',
+          subject: 'Test Email: Please Ignore',
           from: {
             emailAddress: {
               name: 'Simulated Sender',

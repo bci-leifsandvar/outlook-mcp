@@ -5,7 +5,7 @@ const config = require('../config');
 const { callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { resolveFolderPath } = require('./folder-utils');
-const { sanitizeEmail } = require('../utils/pii-sanitizer');
+const { maskPII } = require('../utils/sanitize');
 
 /**
  * List emails handler
@@ -57,7 +57,7 @@ async function handleListEmails(args) {
       const diagSuffix = diag ? ` Diagnostics:${diag}` : '';
 
       const rawString = `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${id}${diagSuffix}\nFolder: ${folderId}\n`;
-      return sanitizeEmail(rawString);
+      return maskPII(rawString);
     }).join('\n');
     
     return {

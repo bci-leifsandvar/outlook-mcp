@@ -4,9 +4,8 @@
 const config = require('../config');
 const { callGraphAPI, callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
-const { sanitizeEmail } = require('../utils/pii-sanitizer');
+const { maskPII } = require('../utils/sanitize');
 const logger = require('../utils/logger');
-// (No folder utils needed yet; retain minimal imports)
 
 // Cache for fuzzy ID matches (shortId -> fullId)
 const fuzzyIdCache = new Map();
@@ -109,17 +108,17 @@ async function handleReadEmail(args) {
       body = email.bodyPreview || 'No content';
     }
 
-    const formattedEmail = `From: ${sender}
-  To: ${to}
-  ${cc !== 'None' ? `CC: ${cc}\n` : ''}${bcc !== 'None' ? `BCC: ${bcc}\n` : ''}Subject: ${email.subject}
+    const formattedEmail = `From: ${maskPII(sender)}
+  To: ${maskPII(to)}
+  ${cc !== 'None' ? `CC: ${maskPII(cc)}\n` : ''}${bcc !== 'None' ? `BCC: ${maskPII(bcc)}\n` : ''}Subject: ${maskPII(email.subject)}
   Date: ${date}
   Importance: ${email.importance || 'normal'}
   Has Attachments: ${email.hasAttachments ? 'Yes' : 'No'}
   ID Used: ${attemptedId} ${fallbackNote}
 
-  ${body}`;
+  ${maskPII(body)}`;
 
-    return { content: [{ type: 'text', text: sanitizeEmail(formattedEmail) }] };
+    return { content: [{ type: 'text', text: formattedEmail }] };
   } catch (error) {
     const code = extractGraphErrorCode(error);
     if (error.message === 'Authentication required') {

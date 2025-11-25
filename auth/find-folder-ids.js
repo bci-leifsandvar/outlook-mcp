@@ -1,3 +1,0 @@
-// Moved from root. Original: find-folder-ids.js
-require('../utils/graph-api');
-// ...existing code...

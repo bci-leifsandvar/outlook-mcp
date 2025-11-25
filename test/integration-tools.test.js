@@ -37,7 +37,7 @@ describe('Email tools (test mode)', () => {
     const handleReadEmail = require('../email/read');
     // Simulated single email endpoint id used by mock-data
     const result = await handleReadEmail({ id: 'simulated-email-id' });
-    expect(result.content[0].text).toMatch(/Subject: Simulated Email Subject/);
+    expect(result.content[0].text).toMatch(/Subject: Test Email: Please Ignore/);
   });
 });
 
