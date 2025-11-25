@@ -79,24 +79,24 @@ const ALLOWED_SCOPES = [
 // Scope profiles for least-privilege abstraction
 const PROFILE_SCOPE_MAP = {
   minimal: [
-    'openid','profile','email','User.Read',
-    'Mail.Read','Calendars.Read','Contacts.Read','MailboxSettings.Read'
+    'openid', 'profile', 'email', 'User.Read',
+    'Mail.Read', 'Calendars.Read', 'Contacts.Read', 'MailboxSettings.Read'
   ],
   compose: [
-    'openid','profile','email','User.Read',
-    'Mail.Read','Mail.Send','Calendars.ReadWrite','Contacts.Read'
+    'openid', 'profile', 'email', 'User.Read',
+    'Mail.Read', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.Read'
   ],
   manage: [
-    'openid','profile','email','User.Read','offline_access',
-    'Mail.ReadWrite','Mail.Send','Calendars.ReadWrite','Contacts.ReadWrite'
+    'openid', 'profile', 'email', 'User.Read', 'offline_access',
+    'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite'
   ],
   'admin-plus': [
-    'openid','profile','email','User.Read','offline_access',
-    'Mail.ReadWrite','Mail.Send','Calendars.ReadWrite','Contacts.ReadWrite','MailboxSettings.ReadWrite'
+    'openid', 'profile', 'email', 'User.Read', 'offline_access',
+    'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite', 'MailboxSettings.ReadWrite'
   ],
   constrained: [
-    'openid','profile','email','User.Read',
-    'Mail.Read','Mail.Send','MailboxFolder.ReadWrite','Calendars.Read','Contacts.Read'
+    'openid', 'profile', 'email', 'User.Read',
+    'Mail.Read', 'Mail.Send', 'MailboxFolder.ReadWrite', 'Calendars.Read', 'Contacts.Read'
   ]
 };
 

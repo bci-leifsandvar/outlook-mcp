@@ -135,7 +135,7 @@ function simulateGraphAPIResponse(method, path, _data, _queryParams) {
         automaticallyAdjustForDaylightSavingTime: true,
         language: { locale: 'en-US', displayName: 'English (United States)' },
         workingHours: {
-          daysOfWeek: ['monday','tuesday','wednesday','thursday','friday'],
+          daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
           startTime: '08:00:00.0000000',
           endTime: '17:00:00.0000000',
           timeZone: { name: 'Pacific Standard Time' }
@@ -151,8 +151,8 @@ function simulateGraphAPIResponse(method, path, _data, _queryParams) {
       // list or single contact (single omitted for simplicity)
       return {
         value: [
-          { id: 'contact-1', displayName: 'Alice Adams', emailAddresses: [{ address: 'alice@example.com'}], companyName: 'ExampleCorp' },
-          { id: 'contact-2', displayName: 'Bob Brown', emailAddresses: [{ address: 'bob@example.com'}], companyName: 'ExampleCorp' }
+          { id: 'contact-1', displayName: 'Alice Adams', emailAddresses: [{ address: 'alice@example.com' }], companyName: 'ExampleCorp' },
+          { id: 'contact-2', displayName: 'Bob Brown', emailAddresses: [{ address: 'bob@example.com' }], companyName: 'ExampleCorp' }
         ]
       };
     }

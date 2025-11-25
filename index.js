@@ -137,14 +137,14 @@ const allTools = [
 
 const grantedScopes = config.AUTH_CONFIG.scopes;
 const TOOLS = allTools.filter(tool => {
-    if (!tool.requiredScopes || tool.requiredScopes.length === 0) {
-        return true; // Always include tools that don't require scopes
-    }
-    const { ok } = config.validateToolScopes(tool.name, tool.requiredScopes, grantedScopes);
-    if (!ok) {
-        logger.warn(`Excluding tool '${tool.name}' due to missing scopes.`);
-    }
-    return ok;
+  if (!tool.requiredScopes || tool.requiredScopes.length === 0) {
+    return true; // Always include tools that don't require scopes
+  }
+  const { ok } = config.validateToolScopes(tool.name, tool.requiredScopes, grantedScopes);
+  if (!ok) {
+    logger.warn(`Excluding tool '${tool.name}' due to missing scopes.`);
+  }
+  return ok;
 });
 
 // Debug: Print all registered tool names and count
@@ -222,44 +222,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-        // Basic prompt-injection hardening: sanitize all string args except confirmationToken
-        const hardenedArgs = { ...args };
-        Object.keys(hardenedArgs).forEach(key => {
-          const val = hardenedArgs[key];
-          if (key === 'confirmationToken') return; // do not mutate security token
-          if (typeof val === 'string') {
-            if (isSuspicious(val)) {
-              logger.warn('Blocked suspicious argument', { tool: toolName, field: key });
-              return {
-                content: [{
-                  type: 'text',
-                  text: `Input for field '${key}' appears malicious or prompt-injection oriented and was blocked.`
-                }],
-                isError: true
-              };
-            }
-            // Sanitize benign input
-            hardenedArgs[key] = sanitizeText(val, 2000);
-          }
-        });
-
-        // Runtime scope validation (skip in test mode)
-        if (!config.USE_TEST_MODE && Array.isArray(tool.requiredScopes)) {
-          const { validateToolScopes } = require('./config');
-          const scopeCheck = validateToolScopes(toolName, tool.requiredScopes, config.AUTH_CONFIG.scopes);
-          if (!scopeCheck.ok) {
-            return {
-              content: [{
-                type: 'text',
-                text: scopeCheck.message + `\nGranted scopes: ${config.AUTH_CONFIG.scopes.join(', ')}`
-              }],
-              isError: true
-            };
-          }
+    // Basic prompt-injection hardening: sanitize all string args except confirmationToken
+    const hardenedArgs = { ...args };
+    Object.keys(hardenedArgs).forEach(key => {
+      const val = hardenedArgs[key];
+      if (key === 'confirmationToken') return; // do not mutate security token
+      if (typeof val === 'string') {
+        if (isSuspicious(val)) {
+          logger.warn('Blocked suspicious argument', { tool: toolName, field: key });
+          return {
+            content: [{
+              type: 'text',
+              text: `Input for field '${key}' appears malicious or prompt-injection oriented and was blocked.`
+            }],
+            isError: true
+          };
         }
+        // Sanitize benign input
+        hardenedArgs[key] = sanitizeText(val, 2000);
+      }
+    });
 
-        // Execute the tool handler (it will handle confirmation internally)
-        const result = await tool.handler(hardenedArgs);
+    // Runtime scope validation (skip in test mode)
+    if (!config.USE_TEST_MODE && Array.isArray(tool.requiredScopes)) {
+      const { validateToolScopes } = require('./config');
+      const scopeCheck = validateToolScopes(toolName, tool.requiredScopes, config.AUTH_CONFIG.scopes);
+      if (!scopeCheck.ok) {
+        return {
+          content: [{
+            type: 'text',
+            text: `${scopeCheck.message}\nGranted scopes: ${config.AUTH_CONFIG.scopes.join(', ')}`
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Execute the tool handler (it will handle confirmation internally)
+    const result = await tool.handler(hardenedArgs);
 
     // IMPROVED: Add context hint if this is a confirmation request
     if (result && result.content && result.content[0] &&

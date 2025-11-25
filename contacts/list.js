@@ -5,7 +5,7 @@ async function handleListContacts(args = {}) {
   const { top = 20 } = args;
   try {
     const accessToken = await ensureAuthenticated();
-    const data = await callGraphAPI(accessToken, 'GET', `me/contacts`, null, { $top: top, $select: 'id,displayName,emailAddresses,companyName' });
+    const data = await callGraphAPI(accessToken, 'GET', 'me/contacts', null, { $top: top, $select: 'id,displayName,emailAddresses,companyName' });
     const contacts = data.value || [];
     if (contacts.length === 0) {
       return { content: [{ type: 'text', text: 'No contacts found.' }] };
