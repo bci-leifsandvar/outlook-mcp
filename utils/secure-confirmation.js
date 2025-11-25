@@ -2,8 +2,8 @@
  * Secure Confirmation Tool for MCP
  * Handles token-based human confirmation for sensitive actions
  */
-const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
-const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+const { promptForConfirmation, validateConfirmationToken } = require('./secure-prompt');
+const { sanitizeText, isSuspicious } = require('./sanitize');
 
 /**
  * Secure confirmation handler

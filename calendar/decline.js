@@ -3,6 +3,10 @@
  */
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
+const { logSensitiveAction } = require('../utils/sensitive-log');
+const { isSuspicious } = require('../utils/sanitize');
+const config = require('../config');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 /**
  * Decline event handler
@@ -10,16 +14,12 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleDeclineEvent(args) {
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  const { isSuspicious } = require('../utils/sanitize');
   // Log attempt (before confirmation)
   logSensitiveAction('declineEvent', args, 'unknown', isSuspicious(args.eventId));
-  require('../config').ensureConfigSafe();
+  config.ensureConfigSafe();
   const { eventId, comment, confirmationToken } = args;
   // Secure prompting mode (from config)
-  const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE) {
-    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+  if (config.SECURE_PROMPT_MODE) {
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'declineEvent',
       fields: [eventId, comment],

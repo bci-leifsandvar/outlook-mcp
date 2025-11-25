@@ -16,14 +16,7 @@ const getLogStream = () => {
   return fs.createWriteStream(currentLogFile, { flags: 'a' });
 };
 
-// Placeholder for SIEM integration
-const shipToSIEM = (logEntry) => {
-  if (logConfig.siemEndpoint) {
-    // In a real implementation, this would be an HTTP POST to the SIEM endpoint
-    // For now, we'll just log that we would have sent it.
-    console.log(`[SIEM_SHIP_PLACEHOLDER] Would send to ${logConfig.siemEndpoint}: ${logEntry}`);
-  }
-};
+const { shipToSIEM } = require('../siem');
 
 function baseLog(level, message, details = {}) {
   const sanitizedDetails = sanitizeObjectForLogging(details);

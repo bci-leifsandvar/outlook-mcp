@@ -3,6 +3,10 @@
  */
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
+const { isSuspicious } = require('../utils/sanitize');
+const { logSensitiveAction } = require('../utils/sensitive-log');
+const config = require('../config');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 /**
  * Delete event handler
@@ -11,18 +15,14 @@ const { ensureAuthenticated } = require('../auth');
  */
 async function handleDeleteEvent(args) {
   const { eventId, confirmationToken } = args;
-  const { isSuspicious } = require('../utils/sanitize');
-  const { logSensitiveAction } = require('../utils/sensitive-log');
 
   // Log attempt (before confirmation)
   logSensitiveAction('deleteEvent', args, 'unknown', isSuspicious(eventId));
 
-  require('../config').ensureConfigSafe();
+  config.ensureConfigSafe();
 
   // Secure prompting mode (from config)
-  const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE) {
-    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+  if (config.SECURE_PROMPT_MODE) {
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'deleteEvent',
       fields: [eventId],

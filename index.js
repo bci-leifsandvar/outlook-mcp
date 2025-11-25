@@ -5,7 +5,27 @@ if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING &&
   require('dotenv').config();
 }
 
+const path = require('path');
+const { spawn } = require('child_process');
+const net = require('net');
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const { 
+  ListToolsRequestSchema, 
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ListPromptsRequestSchema
+} = require('@modelcontextprotocol/sdk/types.js');
+const config = require('./config');
 const logger = require('./utils/logger');
+const { sanitizeText, isSuspicious } = require('./utils/sanitize');
+const { authTools } = require('./auth');
+const { calendarTools } = require('./calendar');
+const { emailTools } = require('./email');
+const { folderTools } = require('./folder');
+const { rulesTools } = require('./rules');
+const { mailboxTools } = require('./mailbox');
+const { contactsTools } = require('./contacts');
 
 /**
  * Outlook MCP Server - Main entry point
@@ -16,29 +36,13 @@ const logger = require('./utils/logger');
  * Compatible with any MCP client (Claude Desktop, OpenAI / ChatGPT MCP workers,
  * generic OpenAPI MCP bridges, and other tool runners) via stdio transport.
  */
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { 
-  ListToolsRequestSchema, 
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ListPromptsRequestSchema
-} = require('@modelcontextprotocol/sdk/types.js');
-const config = require('./config');
 
-// Import module tools
-const { authTools } = require('./auth');
-const { calendarTools } = require('./calendar');
-const { emailTools } = require('./email');
-const { folderTools } = require('./folder');
-const { rulesTools } = require('./rules');
-const { mailboxTools } = require('./mailbox');
-const { contactsTools } = require('./contacts');
-
-// Log startup information
-// Spawn subservers (auth and secure confirmation) as child processes if not already running
-const { spawn } = require('child_process');
-const net = require('net');
+// Load .env unless a known MCP client provides its own environment
+// Skip when running under Claude, OpenAI ChatGPT MCP wrapper, or generic MCP orchestrators
+if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING &&
+    !process.env.OPENAI_MCP && !process.env.MCP_CLIENT) {
+  require('dotenv').config();
+}
 function isPortInUse(port, cb) {
   const tester = net.createServer()
     .once('error', err => (err.code === 'EADDRINUSE' ? cb(true) : cb(false)))
@@ -87,10 +91,9 @@ if (authControl === 'inline') {
 } else if (authControl === 'true') {
   logger.warn('Outlook Auth Server disabled (DISABLE_AUTH_SUBSERVER=true)');
 } else {
-  spawnSubserver(3333, require('path').resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
+  spawnSubserver(3333, path.resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
 }
-spawnSubserver(4000, require('path').resolve(__dirname, 'secure-confirmation-server.js'), 'Secure Confirmation Server');
-const { sanitizeText, isSuspicious } = require('./utils/sanitize');
+spawnSubserver(4000, path.resolve(__dirname, 'secure-confirmation-server.js'), 'Secure Confirmation Server');
 
 // Generic onboarding message for ALL MCP clients (no vendor-specific instructions)
 const SECURE_ACTION_PROTOCOL_MESSAGE = `

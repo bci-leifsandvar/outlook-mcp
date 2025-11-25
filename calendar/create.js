@@ -4,6 +4,10 @@
 const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { DEFAULT_TIMEZONE } = require('../config');
+const { isSuspicious } = require('../utils/sanitize');
+const { logSensitiveAction } = require('../utils/sensitive-log');
+const config = require('../config');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 /**
  * Create event handler
@@ -11,10 +15,7 @@ const { DEFAULT_TIMEZONE } = require('../config');
  * @returns {object} - MCP response
  */
 async function handleCreateEvent(args) {
-  // Import utilities FIRST before using them
-  const { isSuspicious } = require('../utils/sanitize');
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  require('../config').ensureConfigSafe();
+  config.ensureConfigSafe();
   
   // Extract args SECOND
   const { subject, start, end, attendees, body, confirmationToken } = args;
@@ -23,9 +24,7 @@ async function handleCreateEvent(args) {
   logSensitiveAction('createEvent', args, 'unknown', [subject, start, end, ...(Array.isArray(attendees) ? attendees : [])].some(isSuspicious));
   
   // Secure prompting mode (from config)
-  const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE) {
-    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+  if (config.SECURE_PROMPT_MODE) {
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'createEvent',
       fields: [subject, start, end, attendees, body],
