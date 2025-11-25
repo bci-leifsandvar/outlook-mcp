@@ -1,8 +1,6 @@
 /**
- * Microsoft Graph API helper functions
+ * Microsoft Graph API helper functions (native fetch refactor)
  */
-const https = require('https');
-const http = require('http');
 const config = require('../config');
 const logger = require('./logger');
 const mockData = require('./mock-data');
@@ -17,93 +15,63 @@ const mockData = require('./mock-data');
  * @returns {Promise<object>} - The API response
  */
 function callGraphAPI(accessToken, method, path, data = null, queryParams = {}) {
-  // For local test mode, simulate with canned mock data
+  // Test mode simulation
   if (config.USE_TEST_MODE && accessToken.startsWith('test_access_token_')) {
     logger.debug('TEST MODE: Simulating API call', { method, path, data, queryParams });
     return mockData.simulateGraphAPIResponse(method, path, data, queryParams);
   }
-  // For mock Graph API server mode, always route to GRAPH_API_ENDPOINT
+  // Mock server routing (still builds full URL from GRAPH_API_ENDPOINT)
   if (config.USE_MOCK_GRAPH_API) {
     logger.debug('MOCK GRAPH API MODE: Routing API call', { method, path, endpoint: config.GRAPH_API_ENDPOINT });
-    // Build URL from path and queryParams as usual
-    // ...existing real API call logic below...
   }
 
-  try {
-    logger.info('Making real API call', { method, path });
-    
-    // Check if path already contains the full URL (from nextLink)
-    let finalUrl;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      // Path is already a full URL (from pagination nextLink)
-      finalUrl = path;
-      logger.debug('Using full URL from nextLink', { finalUrl });
-    } else {
-      // Build URL from path and queryParams, avoiding double-encoding.
-      // The path from the tool (e.g., 'me/messages/ENCODED_ID') is trusted to be correctly encoded.
-      let queryString = '';
-      if (Object.keys(queryParams).length > 0) {
-        const params = new URLSearchParams(queryParams);
-        queryString = '?' + params.toString();
-        logger.debug('Graph API query string', { queryString });
-      }
-      
-      // Combine base, path, and query without further encoding the path.
-      finalUrl = `${config.GRAPH_API_ENDPOINT}${path}${queryString}`;
-      logger.debug('Graph API full URL', { finalUrl });
-    }
-    
-    return new Promise((resolve, reject) => {
-      const options = {
-        method: method,
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      };
-      
-      // Choose http or https based on URL protocol
-      const protocol = finalUrl.startsWith('https://') ? https : http;
-      
-      const req = protocol.request(finalUrl, options, (res) => {
-        let responseData = '';
-        
-        res.on('data', (chunk) => {
-          responseData += chunk;
-        });
-        
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              responseData = responseData ? responseData : '{}';
-              const jsonResponse = JSON.parse(responseData);
-              resolve(jsonResponse);
-            } catch (error) {
-              reject(new Error(`Error parsing API response: ${error.message}`));
-            }
-          } else if (res.statusCode === 401) {
-            // Token expired or invalid
-            reject(new Error('UNAUTHORIZED'));
-          } else {
-            reject(new Error(`API call failed with status ${res.statusCode}: ${responseData}`));
-          }
-        });
-      });
-      
-      req.on('error', (error) => {
-        reject(new Error(`Network error during API call: ${error.message}`));
-      });
-      
-      if (data && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
-        req.write(JSON.stringify(data));
-      }
-      
-      req.end();
-    });
-  } catch (error) {
-    logger.error('Error calling Graph API', { error: error.stack });
-    throw error;
+  logger.info('Making real API call', { method, path });
+
+  // Build URL: absolute nextLink vs relative path
+  const isAbsolute = /^https?:\/\//i.test(path);
+  let finalUrl = isAbsolute ? path : `${config.GRAPH_API_ENDPOINT}${path}`;
+
+  // Append query params if not already present (avoid mutating nextLink URLs)
+  if (!finalUrl.includes('?') && Object.keys(queryParams).length > 0) {
+    const urlObj = new URL(finalUrl);
+    Object.entries(queryParams).forEach(([k, v]) => urlObj.searchParams.append(k, v));
+    finalUrl = urlObj.toString();
   }
+  logger.debug('Graph API full URL', { finalUrl });
+
+  // Timeout control
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  return fetch(finalUrl, {
+    method: method.toUpperCase(),
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      Prefer: 'IdType="ImmutableId"'
+    },
+    body: data && (method === 'POST' || method === 'PATCH' || method === 'PUT') ? JSON.stringify(data) : undefined,
+    signal: controller.signal
+  })
+    .then(async res => {
+      clearTimeout(timeout);
+      const text = await res.text();
+      let json;
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch (e) {
+        throw new Error(`Error parsing API response: ${e.message}`);
+      }
+      if (res.ok) return json;
+      if (res.status === 401) throw new Error('UNAUTHORIZED');
+      throw new Error(`API call failed with status ${res.status}: ${JSON.stringify(json)}`);
+    })
+    .catch(err => {
+      if (err.name === 'AbortError') {
+        throw new Error('Network timeout during API call');
+      }
+      throw new Error(`Network error during API call: ${err.message}`);
+    });
 }
 
 /**

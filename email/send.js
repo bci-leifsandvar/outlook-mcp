@@ -45,10 +45,14 @@ async function handleSendEmail(args) {
       globalTokenStore: '__sendEmailTokens',
       promptText: `SECURE ACTION: Human confirmation required.\nAction: send-email\nTo: ${to}\nSubject: ${subject}\nBody length: ${(body || '').length} chars\nIf you approve, provide the confirmation token.`
     });
-    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
-      return confirmationResult; // Will include secure action prompt
+    // Block unless we have an explicit acceptance object
+    if (!confirmationResult || confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult || {
+        content: [{ type: 'text', text: 'Confirmation pending. Re-run with the provided token or actionId.' }],
+        requiresConfirmation: true
+      };
     }
-    // Proceed after confirmationAccepted
+    // Proceed after explicit confirmationAccepted === true
   }
   
   // Validate required parameters

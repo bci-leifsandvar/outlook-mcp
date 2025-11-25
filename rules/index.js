@@ -3,6 +3,7 @@
  */
 const { handleListRules } = require('./list');
 const { handleCreateRule } = require('./create');
+const { editRuleSequenceTool } = require('./edit-sequence');
 
 // Import required utilities
 const { ensureAuthenticated } = require('../auth');
@@ -159,31 +160,12 @@ const rulesTools = [
     },
     handler: handleCreateRule
   },
-  {
-    name: 'edit-rule-sequence',
-    description: 'Changes the execution order of an existing inbox rule',
-    requiredScopes: ['Mail.ReadWrite'],
-    inputSchema: {
-      type: 'object',
-      properties: {
-        ruleName: {
-          type: 'string',
-          description: 'Name of the rule to modify'
-        },
-        sequence: {
-          type: 'number',
-          description: 'New sequence value for the rule (lower numbers run first)'
-        }
-      },
-      required: ['ruleName', 'sequence']
-    },
-    handler: handleEditRuleSequence
-  }
+  editRuleSequenceTool
 ];
 
 module.exports = {
   rulesTools,
   handleListRules,
   handleCreateRule,
-  handleEditRuleSequence
+  editRuleSequenceTool
 };

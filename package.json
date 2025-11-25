@@ -25,6 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
+    "axios": "^1.13.2",
     "dotenv": "^16.6.1",
     "rxjs": "^7.8.2",
     "sanitize-html": "^2.17.0"

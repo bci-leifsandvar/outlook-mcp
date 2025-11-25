@@ -1,7 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const SCRIPT_VERSION = '2.0.0-env-fix';
-console.log(`--- Outlook Auth Server ${SCRIPT_VERSION} starting up ---`);
+process.stdout.write(`--- Outlook Auth Server ${SCRIPT_VERSION} starting up ---\n`);
 
 const http = require('http');
 const url = require('url');
@@ -332,12 +332,13 @@ function startAuthServer(port = 3333, silent = false) {
   // Start server
   server.listen(port, () => {
     if (!silent) {
-      logger.info('Authentication server running', { url: `http://localhost:${port}` });
-      logger.info('Waiting for authentication callback', { redirect: AUTH_CONFIG.redirectUri });
-      logger.info('Token store path', { path: AUTH_CONFIG.tokenStorePath });
-      logger.info('Credential source', { credentialSource });
+      // These logs are captured by the main process and routed to the logger.
+      process.stdout.write(`Authentication server running at http://localhost:${port}\n`);
+      process.stdout.write(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}\n`);
+      process.stdout.write(`Token store path: ${AUTH_CONFIG.tokenStorePath}\n`);
+      process.stdout.write(`Credential source: ${credentialSource}\n`);
       if (!AUTH_CONFIG.clientId || !AUTH_CONFIG.clientSecret) {
-        logger.warn('Microsoft Graph API credentials are not set. Provide OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET or MS_CLIENT_ID/MS_CLIENT_SECRET.');
+        process.stdout.write('Warning: Microsoft Graph API credentials are not set. Provide OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET or MS_CLIENT_ID/MS_CLIENT_SECRET.\n');
       }
     }
   });
