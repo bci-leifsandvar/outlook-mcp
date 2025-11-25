@@ -29,50 +29,30 @@ async function handleSendEmail(args) {
   rateLimitStore[userKey].push(now);
   const { logSensitiveAction } = require('../utils/sensitive-log');
   // Log attempt (before confirmation)
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken } = args;
   logSensitiveAction('sendEmail', args, 'unknown', [subject, to, cc, bcc].some(isSuspicious));
   const { SECURE_PROMPT_MODE } = require('../config');
+  const { handleSecureConfirmation } = require('../utils/secure-confirmation');
   const sanitizeHtml = require('sanitize-html');
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE) {
-    const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
-    const safeSubject = sanitizeText(subject);
-    const safeTo = sanitizeText(to);
-    const safeCc = sanitizeText(cc);
-    const safeBcc = sanitizeText(bcc);
-    if ([subject, to, cc, bcc].some(isSuspicious)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in email fields. Action blocked.'
-        }],
-        requiresConfirmation: false
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'send-email',
+      fields: [to || '', subject || '', (body || '').slice(0, 200)],
+      confirmationToken,
+      globalTokenStore: '__sendEmailTokens',
+      promptText: `SECURE ACTION: Human confirmation required.\nAction: send-email\nTo: ${to}\nSubject: ${subject}\nBody length: ${(body || '').length} chars\nIf you approve, provide the confirmation token.`
+    });
+    // Block unless we have an explicit acceptance object
+    if (!confirmationResult || confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult || {
+        content: [{ type: 'text', text: 'Confirmation pending. Re-run with the provided token or actionId.' }],
+        requiresConfirmation: true
       };
     }
-    // Use secure-prompt utility - FIXED: Now properly generates token
-    if (!confirmationToken) {
-      const promptResult = promptForConfirmation({
-        actionType: 'sendEmail',
-        fields: [to, cc || '', bcc || '', subject, body],
-        safeFields: [safeTo, safeCc, safeBcc, safeSubject],
-        globalTokenStore: '__sendEmailTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nAction: Send Email\nSubject: ${safeSubject}\nTo: ${safeTo}${cc ? `\nCC: ${safeCc}` : ''}${bcc ? `\nBCC: ${safeBcc}` : ''}`
-      });
-      
-      if (promptResult) {
-        return promptResult;
-      }
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [to, cc || '', bcc || '', subject, body],
-        globalTokenStore: '__sendEmailTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to send
-    }
+    // Proceed after explicit confirmationAccepted === true
   }
   
   // Validate required parameters
@@ -96,91 +76,77 @@ async function handleSendEmail(args) {
   for (const email of allEmails) {
     if (email.trim() && !emailRegex.test(email.trim())) {
       return {
-        content: [{ type: 'text', text: `Invalid email address detected: ${email.trim()}` }],
-        isError: true
+        content: [{ type: 'text', text: `Invalid email address detected: ${email.trim()}` }]
       };
     }
   }
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Format recipients
-    const toRecipients = to.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Format recipients
+  const toRecipients = to.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  });
+  
+  const ccRecipients = cc ? cc.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  }) : [];
+  
+  const bccRecipients = bcc ? bcc.split(',').map(email => {
+    email = email.trim();
+    return {
+      emailAddress: {
+        address: email
+      }
+    };
+  }) : [];
+  
+  // Sanitize HTML body if needed
+  let sanitizedBody = body;
+  let contentType = 'text';
+  if (body.includes('<html') || body.includes('<body') || body.includes('<div')) {
+    sanitizedBody = sanitizeHtml(body, {
+      allowedTags: sanitizeHtml.defaults.allowedTags,
+      allowedAttributes: sanitizeHtml.defaults.allowedAttributes
     });
-    
-    const ccRecipients = cc ? cc.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
-    }) : [];
-    
-    const bccRecipients = bcc ? bcc.split(',').map(email => {
-      email = email.trim();
-      return {
-        emailAddress: {
-          address: email
-        }
-      };
-    }) : [];
-    
-    // Sanitize HTML body if needed
-    let sanitizedBody = body;
-    let contentType = 'text';
-    if (body.includes('<html') || body.includes('<body') || body.includes('<div')) {
-      sanitizedBody = sanitizeHtml(body, {
-        allowedTags: sanitizeHtml.defaults.allowedTags,
-        allowedAttributes: sanitizeHtml.defaults.allowedAttributes
-      });
-      contentType = 'html';
-    }
-    // Prepare email object
-    const emailObject = {
-      message: {
-        subject,
-        body: {
-          contentType,
-          content: sanitizedBody
-        },
-        toRecipients,
-        ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
-        bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
-        importance
-      },
-      saveToSentItems
-    };
-    
-    // Make API call to send email
-    await callGraphAPI(accessToken, 'POST', 'me/sendMail', emailObject);
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${sanitizedBody.length} characters`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'authenticate' tool first." }]
-      };
-    }
-    // Sanitize error message for client
-    return {
-      content: [{ type: 'text', text: 'Error sending email. Please check your input and try again.' }],
-      isError: true
-    };
+    contentType = 'html';
   }
+  // Prepare email object
+  const emailObject = {
+    message: {
+      subject,
+      body: {
+        contentType,
+        content: sanitizedBody
+      },
+      toRecipients,
+      ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
+      bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
+      importance
+    },
+    saveToSentItems
+  };
+  
+  // Make API call to send email
+  await callGraphAPI(accessToken, 'POST', 'me/sendMail', emailObject);
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: `Email sent successfully!\n\nSubject: ${subject}\nRecipients: ${toRecipients.length}${ccRecipients.length > 0 ? ` + ${ccRecipients.length} CC` : ''}${bccRecipients.length > 0 ? ` + ${bccRecipients.length} BCC` : ''}\nMessage Length: ${sanitizedBody.length} characters`
+    }]
+  };
 }
 
 module.exports = handleSendEmail;

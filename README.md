@@ -1,198 +1,84 @@
-# ⚠️ Fork Notice
+# Outlook MCP Server
 
-This repository is a fork. Any certifications, badges, or compliance claims from the upstream project (including MCPHub or MseeP.ai) are **not valid** for this fork. Use at your own risk and verify all security and compliance independently.
+> **⚠️ Notice: Authentication Status**
+>
+> The authentication flow has been tested and is functional, particularly when using the recommended `inline` mode for the auth server. However, the logic for handling subprocess environment variables and process lifecycle could be tidied up further for improved robustness. The core tool functionality is unaffected.
+>
+> **Workaround:** For the most reliable experience, run the auth server in `inline` mode. See the updated configuration instructions below.
 
-## Security: Data Protection, Logging & Monitoring
+A modern, modular Model Context Protocol (MCP) server to connect AI assistants like Claude to your Microsoft Outlook account via the Microsoft Graph API.
 
-**Privacy Policy:**
-- See `PRIVACY-POLICY.md` for details on data collection, consent, and user rights.
+## Overview
 
-**Consent Tracking:**
-- User consent events (timestamp, scopes) are recorded in `~/.outlook-mcp-consent.json` for audit and compliance.
-
-**Token Encryption at Rest:**
-- All tokens are encrypted using AES-256-GCM before being saved to disk. The encryption key must be set via the `MCP_TOKEN_KEY` environment variable (64 hex characters).
-
-**PII Masking in Logs:**
-- Sensitive action logs automatically mask or redact PII (such as email addresses and simple names) before writing to disk. See `utils/sanitize.js` for masking logic.
-
-**Suspicious Event Detection & Logging:**
-- Sensitive actions (send, create, delete, move, rule create) are monitored for prompt injection and abuse patterns. The following are considered suspicious:
-  - Inputs containing `user:`, `assistant:`, code block markers (```), triple hash (`###`), double newlines, or `<script>` tags
-  - Any pattern listed in `utils/sanitize.js` SUSPICIOUS_PATTERNS
-- If a suspicious pattern is detected:
-  - The action is blocked (if in a confirmation prompt)
-  - The attempt is logged in `~/outlook-mcp-sensitive-actions.log` (with PII masked)
-  - Repeated suspicious attempts (3+ in 10 minutes) trigger an alert entry in the log
-
-You can tune patterns in `utils/sanitize.js` and adjust logging in `utils/sensitive-log.js`.
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ryaker-outlook-mcp-badge.png)](https://mseep.ai/app/ryaker-outlook-mcp)
-
-# Modular Outlook MCP Server
-
-This is a modular implementation of the Outlook MCP (Model Context Protocol) server that connects Claude with Microsoft Outlook through the Microsoft Graph API.
-Certified by MCPHub https://mcphub.com/mcp-servers/ryaker/outlook-mcp
-
-## Directory Structure
-
-```
-├── index.js                   # Main entry point
-├── config.js                  # Configuration settings
-├── .env.example               # Example environment config
-├── MCP-WORKFLOW-EXPLAINER.md  # Workflow and architecture explainer
-├── CHANGELOG.md               # Changelog for this fork
-├── README.md                  # Project documentation
-├── auth/
-│   ├── index.js               # Authentication exports
-│   ├── token-manager.js       # Token storage and refresh
-│   └── tools.js               # Auth-related tools
-├── calendar/
-│   ├── index.js               # Calendar exports
-│   ├── list.js                # List events
-│   ├── create.js              # Create event
-│   ├── delete.js              # Delete event
-│   ├── cancel.js              # Cancel
-│   ├── accept.js              # Accept event
-│   ├── tentative.js           # Tentatively accept event
-│   ├── decline.js             # Decline event
-├── email/
-│   ├── index.js               # Email exports
-│   ├── list.js                # List emails
-│   ├── search.js              # Search emails
-│   ├── read.js                # Read email
-│   └── send.js                # Send email
-├── folder/
-│   ├── index.js               # Folder exports
-│   ├── list.js                # List folders
-│   ├── create.js              # Create folder
-│   └── move.js                # Move emails
-├── rules/
-│   ├── index.js               # Rules exports
-│   ├── list.js                # List rules
-│   └── create.js              # Create rule
-├── utils/
-│   ├── graph-api.js           # Microsoft Graph API helper
-│   ├── odata-helpers.js       # OData query building
-│   ├── mock-data.js           # Test mode data
-│   ├── sanitize.js            # Input sanitization helpers
-│   ├── sensitive-log.js       # Sensitive action logging/alerting
-│   └── crypto.js              # Token encryption/decryption helpers
-├── test-encryption.js         # (Optional) Test script for encryption/logging
-```
+This server acts as a bridge, allowing a large language model to securely access and manage your emails, calendar events, and contacts. It's built with a clean, modular architecture, making it easy to understand, maintain, and extend.
 
 ## Features
 
-- **Authentication**: OAuth 2.0 authentication with Microsoft Graph API
-- **Email Management**: List, search, read, and send emails
-- **Calendar Management**: List, create, accept, decline, and delete calendar events
-- **Modular Structure**: Clean separation of concerns for better maintainability
-- **OData Filter Handling**: Proper escaping and formatting of OData queries
-- **Test Mode**: Simulated responses for testing without real API calls
+- **Modular Design**: Functionality is cleanly separated into modules (`auth`, `email`, `calendar`, etc.).
+- **Secure Authentication**: Uses OAuth 2.0 for secure, token-based access to Microsoft Graph.
+- **Comprehensive API Coverage**:
+  - **Email**: List, read, search, and send.
+  - **Calendar**: List, create, and manage events.
+  - **Contacts**: List, create, and manage contacts.
+  - **Folders & Rules**: Manage email folders and mailbox rules.
+- **Test Mode**: Includes a test mode with mock data for development and testing without hitting live APIs.
+- **Secure by Default**: Implements confirmation prompts for sensitive actions.
 
-## Quick Start
+## Prerequisites
 
-1. **Install dependencies**: `npm install`
-2. **Azure setup**: Register app in Azure Portal (see detailed steps below)
-3. **Configure environment**: Copy `.env.example` to `.env` and add your Azure credentials
-4. **Configure Claude**: Update your Claude Desktop config with the server path
-5. **Start auth server**: `npm run auth-server` 
-6. **Authenticate**: Use the authenticate tool in Claude to get the OAuth URL
-7. **Start using**: Access your Outlook data through Claude!
+- **Node.js** (v16.x or later recommended)
+- **npm** or **yarn**
+- An **Azure Account** with permissions to register applications.
 
-## Installation
+## 1. Installation
 
-### Prerequisites
-- Node.js 14.0.0 or higher
-- npm or yarn package manager
-- Azure account for app registration
-
-### Install Dependencies
+Clone the repository and install the dependencies.
 
 ```bash
+git clone <repository-url>
+cd outlook-mcp
 npm install
 ```
 
-This will install the required dependencies including:
-- `@modelcontextprotocol/sdk` - MCP protocol implementation
-- `dotenv` - Environment variable management
+## 2. Azure App Registration
 
-## Azure App Registration & Configuration
+You must register an application in the Azure Portal to get the necessary client credentials.
 
-To use this MCP server you need to first register and configure an app in Azure Portal. The following steps will take you through the process of registering a new app, configuring its permissions, and generating a client secret.
+1.  **Navigate to Azure Portal**: Go to [portal.azure.com](https://portal.azure.com/) and sign in.
+2.  **App registrations**: Find and select "App registrations".
+3.  **New registration**:
+    -   Give it a name (e.g., `Claude-Outlook-Assistant`).
+    -   Select **"Accounts in any organizational directory (Any Azure AD directory - Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)"**.
+    -   Set the **Redirect URI**:
+        -   Select **Web** as the platform.
+        -   Enter `http://localhost:3333/auth/callback`.
+4.  **Copy Client ID**: From your app's **Overview** page, copy the **Application (client) ID**.
+5.  **Create Client Secret**:
+    -   Go to **Certificates & secrets**.
+    -   Click **New client secret**.
+    -   Give it a description and set an expiration (e.g., 24 months).
+    -   **Immediately copy the secret's `Value`**. You will not see it again.
 
-### App Registration
+## 3. Configuration
 
-1. Open [Azure Portal](https://portal.azure.com/) in your browser
-2. Sign in with a Microsoft Work or Personal account
-3. Search for or cilck on "App registrations"
-4. Click on "New registration"
-5. Enter a name for the app, for example "Outlook MCP Server"
-6. Select the "Accounts in any organizational directory and personal Microsoft accounts" option
-7. In the "Redirect URI" section, select "Web" from the dropdown and enter "http://localhost:3333/auth/callback" in the textbox
-8. Click on "Register"
-9. From the Overview section of the app settings page, copy the "Application (client) ID" and enter it as the MS_CLIENT_ID in the .env file as well as the OUTLOOK_CLIENT_ID in the claude-config-sample.json file
+This project uses a `.env` file for local development and relies on the client (e.g., Claude Desktop) to inject environment variables in production.
 
+### Local Development (`.env` file)
 
-### App Permissions
+Create a `.env` file in the project root:
 
-1. From the app settings page in Azure Portal select the "API permissions" option under the Manage section
-2. Click on "Add a permission"
-3. Click on "Microsoft Graph"
-4. Select "Delegated permissions"
-5. Search for and select only the permissions you need. The server supports:
-  - Mail.Read, Mail.ReadWrite, Mail.Send, User.Read, Calendars.Read, Calendars.ReadWrite, Contacts.Read
-  - (You can restrict further by setting the OUTLOOK_SCOPES environment variable)
-6. Click on "Add permissions"
+```env
+# Get these from your Azure App Registration
+MS_CLIENT_ID="<your-application-client-id>"
+MS_CLIENT_SECRET="<your-client-secret-value>"
 
-### Client Secret
-
-1. From the app settings page in Azure Portal select the "Certificates & secrets" option under the Manage section
-2. Switch to the "Client secrets" tab
-3. Click on "New client secret"
-4. Enter a description, for example "Client Secret"
-5. Select the longest possible expiration time
-6. Click on "Add"
-7. **⚠️ IMPORTANT**: Copy the secret **VALUE** (not the Secret ID) and save it for the next step
-
-## Configuration
-
-
-### 1. Environment Variables
-
-Create a `.env` file in the project root by copying the example:
-#### Configurable OAuth Scopes
-
-You can restrict the Microsoft Graph API scopes requested by setting the `OUTLOOK_SCOPES` environment variable (comma-separated). Only the following scopes are allowed:
-
-  Mail.Read, Mail.ReadWrite, Mail.Send, User.Read, Calendars.Read, Calendars.ReadWrite, Contacts.Read
-
-Example:
-
-  OUTLOOK_SCOPES="Mail.Read,User.Read,Calendars.Read"
-
-If not set or if invalid scopes are provided, the server defaults to: `Mail.Read, User.Read, Calendars.Read`.
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your Azure credentials:
-
-```bash
-# Get these values from Azure Portal > App Registrations > Your App
-MS_CLIENT_ID=your-application-client-id-here
-MS_CLIENT_SECRET=your-client-secret-VALUE-here
+# Optional: Set to 'true' to use mock data without API calls
 USE_TEST_MODE=false
 ```
 
-**Important Notes:**
-- Use `MS_CLIENT_ID` and `MS_CLIENT_SECRET` in the `.env` file
-- For Claude Desktop config, you'll use `OUTLOOK_CLIENT_ID` and `OUTLOOK_CLIENT_SECRET`
-- Always use the client secret **VALUE**, never the Secret ID
+### Claude Desktop (`claude_desktop_config.json`)
 
-### 2. Claude Desktop Configuration
-
-Copy the configuration from `claude-config-sample.json` to your Claude Desktop config file and update the paths and credentials:
+Update your Claude Desktop configuration to launch the server and provide the environment variables.
 
 ```json
 {
@@ -200,151 +86,57 @@ Copy the configuration from `claude-config-sample.json` to your Claude Desktop c
     "outlook-assistant": {
       "command": "node",
       "args": [
-        "/absolute/path/to/outlook-mcp/index.js"
+        "C:/absolute/path/to/outlook-mcp/index.js"
       ],
       "env": {
         "USE_TEST_MODE": "false",
-        "OUTLOOK_CLIENT_ID": "your-client-id-here",
-        "OUTLOOK_CLIENT_SECRET": "your-client-secret-here"
+        "DISABLE_AUTH_SUBSERVER": "inline", // Recommended: Run auth server in the same process
+        "OUTLOOK_CLIENT_ID": "<your-application-client-id>",
+        "OUTLOOK_CLIENT_SECRET": "<your-client-secret-value>"
       }
     }
   }
 }
 ```
+*Note: The server is designed to accept both `MS_*` and `OUTLOOK_*` prefixed variables for compatibility.*
 
-### 3. Advanced Configuration (Optional)
+## 4. Usage
 
-To configure server behavior, you can edit `config.js` to change:
+The server is designed to be launched by an MCP client like Claude Desktop. The client is responsible for starting the `node index.js` process.
 
-- Server name and version
-- Test mode settings
-- Authentication parameters
-- Email field selections
-- API endpoints
+### Authentication Flow
 
-## Usage with Claude Desktop
-
-1. **Configure Claude Desktop**: Add the server configuration (see Configuration section above)
-2. **Restart Claude Desktop**: Close and reopen Claude Desktop to load the new MCP server
-3. **Start Authentication Server**: Open a terminal and run `npm run auth-server`
-4. **Authenticate**: In Claude Desktop, use the `authenticate` tool to get an OAuth URL
-
-**Confirmation Prompts:**
-For sensitive actions (such as sending email), you may be prompted to confirm before the action is completed. If you see a message asking "Reply with confirm=true to proceed," reply with `confirm=true` in your next tool call to continue.
-5. **Complete OAuth Flow**: Visit the URL in your browser and sign in with Microsoft
-6. **Start Using**: Once authenticated, you can use all the Outlook tools in Claude!
-
-## Running Standalone
-
-You can test the server using:
-
-```bash
-./test-modular-server.sh
-```
-
-This will use the MCP Inspector to directly connect to the server and let you test the available tools.
-
-## Authentication Flow
-
-The authentication process requires two steps:
-
-### Step 1: Start the Authentication Server
-```bash
-npm run auth-server
-```
-This starts a local server on port 3333 that handles the OAuth callback from Microsoft.
-
-**⚠️ Important**: The auth server MUST be running before you try to authenticate. The authentication URL will not work if the server isn't running.
-
-### Step 2: Authenticate with Microsoft
-1. In Claude Desktop, use the `authenticate` tool
-2. Claude will provide a URL like: `http://localhost:3333/auth?client_id=your-client-id`
-3. Visit this URL in your browser
-4. Sign in with your Microsoft account
-5. Grant the requested permissions
-6. You'll be redirected back to a success page
-7. Tokens are automatically stored in `~/.outlook-mcp-tokens.json`
-
-The authentication server can be stopped after successful authentication (tokens are saved). However, you'll need to restart it if you need to re-authenticate.
+1.  **Start the MCP Client** (e.g., Restart Claude Desktop). The client will automatically start the `outlook-mcp` server and its required sub-processes.
+2.  **Authenticate in Claude**: Use the `authenticate` tool.
+3.  **Browser Sign-in**: Claude will provide a URL. Open it in your browser, sign in to your Microsoft account, and grant the requested permissions.
+4.  **Ready**: Upon success, tokens are stored securely in `~/.outlook-mcp-tokens.json`, and you can start using the tools.
 
 ## Troubleshooting
 
-### Common Installation Issues
+#### Error: `listen EADDRINUSE: address already in use :::3333`
 
-#### "Cannot find module '@modelcontextprotocol/sdk/server/index.js'"
-**Solution**: Install dependencies first:
-```bash
-npm install
-```
+A process is already using the authentication port.
 
-#### "Error: listen EADDRINUSE: address already in use :::3333"
-**Solution**: Port 3333 is already in use. Kill the existing process:
-```bash
+**Fix**: Find and terminate the process.
+
+```powershell
+# Find and kill the process on port 3333
 npx kill-port 3333
 ```
-Then restart the auth server: `npm run auth-server`
 
-### Authentication Issues
+Then, restart your MCP client.
 
-#### "Invalid client secret provided" (Error AADSTS7000215)
-**Root Cause**: You're using the Secret ID instead of the Secret Value.
+#### Authentication Fails with "Configuration Error"
 
-**Solution**:
-1. Go to Azure Portal > App Registrations > Your App > Certificates & secrets
-2. Copy the **Value** column (not the Secret ID column)
-3. Update both:
-   - `.env` file: `MS_CLIENT_SECRET=actual-secret-value`
-   - Claude Desktop config: `OUTLOOK_CLIENT_SECRET=actual-secret-value`
-4. Restart the auth server: `npm run auth-server`
+This means the auth server process is not receiving the client ID and secret.
 
-#### Authentication URL doesn't work / "This site can't be reached"
-**Root Cause**: Authentication server isn't running.
+1.  **Verify `.env` file**: Ensure `MS_CLIENT_ID` and `MS_CLIENT_SECRET` are correct in the `.env` file at the project root.
+2.  **Verify Claude Config**: Ensure `OUTLOOK_CLIENT_ID` and `OUTLOOK_CLIENT_SECRET` are correct in your `claude_desktop_config.json`.
+3.  **Check for Zombie Processes**: Use `npx kill-port 3333` to ensure an old, misconfigured server isn't running.
+4.  **Use Diagnostic Endpoint**: After starting the server, visit `http://localhost:3333/env-diagnostic` in your browser. It should show `"clientIdPresent": true`. If not, the environment variables are not being loaded correctly.
 
-**Solution**:
-1. Start the auth server first: `npm run auth-server`
-2. Wait for "Authentication server running at http://localhost:3333"
-3. Then try the authentication URL in Claude
+#### Invalid Client Secret (Error AADSTS7000215)
 
-#### "Authentication required" after successful setup
-**Root Cause**: Token may have expired or been corrupted.
+You copied the "Secret ID" instead of the "Value" from Azure.
 
-**Solutions**:
-1. Check if token file exists: `~/.outlook-mcp-tokens.json`
-2. If corrupted, delete the file and re-authenticate
-3. Restart the auth server and authenticate again
-
-### Configuration Issues
-
-#### Server doesn't start in Claude Desktop
-**Solutions**:
-1. Check the absolute path in your Claude Desktop config
-2. Ensure `OUTLOOK_CLIENT_ID` and `OUTLOOK_CLIENT_SECRET` are set in Claude config
-3. Restart Claude Desktop after config changes
-
-#### Environment variables not loading
-**Solutions**:
-1. Ensure `.env` file exists in the project root
-2. Use `MS_CLIENT_ID` and `MS_CLIENT_SECRET` in `.env`
-3. Don't add quotes around values in `.env` file
-
-### API and Runtime Issues
-
-- **OData Filter Errors**: Check server logs for escape sequence issues
-- **API Call Failures**: Look for detailed error messages in the response
-- **Token Refresh Issues**: Delete `~/.outlook-mcp-tokens.json` and re-authenticate
-
-### Getting Help
-
-If you're still having issues:
-1. Check the console output from `npm run auth-server` for detailed error messages
-2. Verify your Azure app registration settings match the documentation
-3. Ensure you have the required Microsoft Graph API permissions
-
-## Extending the Server
-
-To add more functionality:
-
-1. Create new module directories (e.g., `calendar/`)
-2. Implement tool handlers in separate files
-3. Export tool definitions from module index files
-4. Import and add tools to `TOOLS` array in `index.js`
+**Fix**: Go back to **Certificates & secrets** in your Azure app, create a new secret, and copy the **Value**. Update your `.env` and/or Claude config and restart.

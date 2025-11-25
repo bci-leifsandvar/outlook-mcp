@@ -11,6 +11,7 @@ const folderTools = [
   {
     name: 'list-folders',
     description: 'Lists mail folders in your Outlook account',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -30,6 +31,7 @@ const folderTools = [
   {
     name: 'create-folder',
     description: 'Creates a new mail folder. When secure mode is enabled, requires human confirmation.',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -53,6 +55,7 @@ const folderTools = [
   {
     name: 'move-emails',
     description: 'Moves emails from one folder to another. When secure mode is enabled, requires human confirmation.',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

@@ -8,7 +8,7 @@ const tokenManager = require('./token-manager');
  * About tool handler
  * @returns {object} - MCP response
  */
-async function handleAbout() {
+function handleAbout() {
   return {
     content: [{
       type: 'text',
@@ -22,12 +22,8 @@ async function handleAbout() {
  * @param {object} args - Tool arguments
  * @returns {object} - MCP response
  */
-async function handleAuthenticate(args) {
+function handleAuthenticate(args) {
   const _force = args && args.force === true;
-  const { SECURE_PROMPT_MODE } = config;
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
-  const { confirmationToken } = args || {};
   // For test mode, create a test token
   if (config.USE_TEST_MODE) {
     // Create a test token with a 1-hour expiry
@@ -35,46 +31,17 @@ async function handleAuthenticate(args) {
     return {
       content: [{
         type: 'text',
-        text: 'Successfully authenticated with Microsoft Graph API (test mode)'
+        text: 'Successfully authenticated with Microsoft Graph API (test mode)\nNOTE: Test access token is distinct from any secure confirmation codes. Confirmation codes NEVER grant API access.'
       }]
     };
   }
-  // For real authentication, require confirmation if secure prompt mode is enabled
-  if (SECURE_PROMPT_MODE) {
-    const safeClientId = sanitizeText(config.AUTH_CONFIG.clientId);
-    if (isSuspicious(config.AUTH_CONFIG.clientId)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in authentication fields. Action blocked.'
-        }],
-        isError: true
-      };
-    }
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'authenticate',
-        fields: [config.AUTH_CONFIG.clientId],
-        safeFields: [safeClientId],
-        globalTokenStore: '__authTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nAuthenticate with client ID: ${safeClientId}`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [config.AUTH_CONFIG.clientId],
-        globalTokenStore: '__authTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to authenticate
-    }
-  }
+  // Removed secure confirmation for authentication to avoid confusion with action confirmation tokens.
   // For real authentication, generate an auth URL and instruct the user to visit it
   const authUrl = `${config.AUTH_CONFIG.authServerUrl}/auth?client_id=${config.AUTH_CONFIG.clientId}`;
   return {
     content: [{
       type: 'text',
-      text: `Authentication required. Please visit the following URL to authenticate with Microsoft: ${authUrl}\n\nAfter authentication, you will be redirected back to this application.`
+      text: `AUTHENTICATION FLOW:\nVisit this URL in your browser to grant access: ${authUrl}\nOAuth access & refresh tokens will be stored automatically.\nIMPORTANT: These OAuth tokens are NEVER the same as secure confirmation codes.\nSecure confirmation codes only approve a single sensitive action and cannot be reused or converted to OAuth credentials.`
     }]
   };
 }
@@ -84,26 +51,64 @@ async function handleAuthenticate(args) {
  * @returns {object} - MCP response
  */
 async function handleCheckAuthStatus() {
-  console.error('[CHECK-AUTH-STATUS] Starting authentication status check');
-  
+  const logger = require('../utils/logger');
+  const graphApi = require('../utils/graph-api');
+  logger.debug('Auth status check start');
+
+  // Load raw tokens (may be test or real)
   const tokens = tokenManager.loadTokenCache();
-  
-  console.error(`[CHECK-AUTH-STATUS] Tokens loaded: ${tokens ? 'YES' : 'NO'}`);
-  
+  logger.debug('Auth status tokens loaded', { present: !!tokens });
+
   if (!tokens || !tokens.access_token) {
-    console.error('[CHECK-AUTH-STATUS] No valid access token found');
-    return {
-      content: [{ type: 'text', text: 'Not authenticated' }]
-    };
+    logger.debug('Auth status - no valid access token');
+    return { content: [{ type: 'text', text: 'Not authenticated' }] };
   }
-  
-  console.error('[CHECK-AUTH-STATUS] Access token present');
-  console.error(`[CHECK-AUTH-STATUS] Token expires at: ${tokens.expires_at}`);
-  console.error(`[CHECK-AUTH-STATUS] Current time: ${Date.now()}`);
-  
-  return {
-    content: [{ type: 'text', text: 'Authenticated and ready' }]
-  };
+
+  // Derive current usable access token (filters out leftover test tokens if not in test mode)
+  const accessToken = tokenManager.getAccessToken();
+  const isTestToken = /^test_access_token_/i.test(tokens.access_token);
+  const now = Date.now();
+  const expiresAt = tokens.expires_at || 0;
+
+  if (!accessToken) {
+    return { content: [{ type: 'text', text: 'Not authenticated (token expired or invalid for current mode)' }] };
+  }
+
+  if (now > expiresAt) {
+    return { content: [{ type: 'text', text: 'Not authenticated (token expired)' }] };
+  }
+
+  if (isTestToken && !config.USE_TEST_MODE) {
+    return { content: [{ type: 'text', text: 'Not authenticated (leftover test-mode token, please re-authenticate)' }] };
+  }
+
+  // Perform lightweight Graph probe when not in test mode to verify token is accepted
+  let probeVerified = false;
+  if (!config.USE_TEST_MODE) {
+    try {
+      const probe = await graphApi.callGraphAPI(accessToken, 'GET', 'me?$select=id');
+      probeVerified = !!(probe && probe.id);
+    } catch (e) {
+      if (e && (e.status === 401 || e.status === 403)) {
+        return { content: [{ type: 'text', text: 'Not authenticated (stored token rejected by Graph API 401/403)' }] };
+      }
+      // Other errors: network/timeouts -> unknown but token still present
+      logger.warn('Graph probe failed during auth status', { error: e.message });
+    }
+  }
+
+  const details = [
+    'Authenticated and ready',
+    `profile=${config.ACTIVE_SCOPE_PROFILE}`,
+    `test_mode=${!!config.USE_TEST_MODE}`,
+    `token_type=${isTestToken ? 'test' : 'real'}`,
+    `expires_at=${expiresAt}`
+  ];
+  if (!config.USE_TEST_MODE) {
+    details.push(`probe_verified=${probeVerified}`);
+  }
+
+  return { content: [{ type: 'text', text: details.join(' | ') }] };
 }
 
 // Tool definitions
@@ -111,6 +116,7 @@ const authTools = [
   {
     name: 'about',
     description: 'Returns information about this Outlook Assistant server',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {},
@@ -121,16 +127,13 @@ const authTools = [
   {
     name: 'authenticate',
     description: 'Authenticate with Microsoft Graph API to access Outlook data',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {
         force: {
           type: 'boolean',
           description: 'Force re-authentication even if already authenticated'
-        },
-        confirmationToken: {
-          type: 'string',
-          description: 'Security confirmation token for authentication (when prompted in secure mode)'
         }
       },
       required: []
@@ -140,6 +143,7 @@ const authTools = [
   {
     name: 'check-auth-status',
     description: 'Check the current authentication status with Microsoft Graph API',
+    requiredScopes: [],
     inputSchema: {
       type: 'object',
       properties: {},

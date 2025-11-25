@@ -57,3 +57,6 @@ temp/
 
 # Misc
 *.tgz
+.github/copilot-instructions.md
+Compliance-Re-Assessment-2025-11-25.md
+INCIDENT-RESPONSE-PLAN.md

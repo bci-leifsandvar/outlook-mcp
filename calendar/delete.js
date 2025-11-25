@@ -10,12 +10,15 @@ const { ensureAuthenticated } = require('../auth');
  * @returns {object} - MCP response
  */
 async function handleDeleteEvent(args) {
+  const { eventId, confirmationToken } = args;
+  const { isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
+
   // Log attempt (before confirmation)
   logSensitiveAction('deleteEvent', args, 'unknown', isSuspicious(eventId));
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+
   require('../config').ensureConfigSafe();
-  const { eventId, confirmationToken } = args;
+
   // Secure prompting mode (from config)
   const { SECURE_PROMPT_MODE } = require('../config');
   if (SECURE_PROMPT_MODE) {
@@ -42,39 +45,21 @@ async function handleDeleteEvent(args) {
     };
   }
 
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
+  // Get access token
+  const accessToken = await ensureAuthenticated();
 
-    // Build API endpoint
-    const endpoint = `me/events/${eventId}`;
+  // Build API endpoint
+  const endpoint = `me/events/${eventId}`;
 
-    // Make API call
-    await callGraphAPI(accessToken, 'DELETE', endpoint);
+  // Make API call
+  await callGraphAPI(accessToken, 'DELETE', endpoint);
 
-    return {
-      content: [{
-        type: 'text',
-        text: `Event with ID ${eventId} has been successfully deleted.`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{
-          type: 'text',
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-
-    return {
-      content: [{
-        type: 'text',
-        text: `Error deleting event: ${error.message}`
-      }]
-    };
-  }
+  return {
+    content: [{
+      type: 'text',
+      text: `Event with ID ${eventId} has been successfully deleted.`
+    }]
+  };
 }
 
 module.exports = handleDeleteEvent;

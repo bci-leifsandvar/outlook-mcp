@@ -12,7 +12,7 @@ const { DEFAULT_TIMEZONE } = require('../config');
  */
 async function handleCreateEvent(args) {
   // Import utilities FIRST before using them
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+  const { isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
   
@@ -48,48 +48,30 @@ async function handleCreateEvent(args) {
     };
   }
 
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
+  // Get access token
+  const accessToken = await ensureAuthenticated();
 
-    // Build API endpoint
-    const endpoint = 'me/events';
+  // Build API endpoint
+  const endpoint = 'me/events';
 
-    // Request body
-    const bodyContent = {
-      subject,
-      start: { dateTime: start.dateTime || start, timeZone: start.timeZone || DEFAULT_TIMEZONE },
-      end: { dateTime: end.dateTime || end, timeZone: end.timeZone || DEFAULT_TIMEZONE },
-      attendees: attendees?.map(email => ({ emailAddress: { address: email }, type: 'required' })),
-      body: { contentType: 'HTML', content: body || '' }
-    };
+  // Request body
+  const bodyContent = {
+    subject,
+    start: { dateTime: start.dateTime || start, timeZone: start.timeZone || DEFAULT_TIMEZONE },
+    end: { dateTime: end.dateTime || end, timeZone: end.timeZone || DEFAULT_TIMEZONE },
+    attendees: attendees?.map(email => ({ emailAddress: { address: email }, type: 'required' })),
+    body: { contentType: 'HTML', content: body || '' }
+  };
 
-    // Make API call
-    const _response = await callGraphAPI(accessToken, 'POST', endpoint, bodyContent);
+  // Make API call
+  const _response = await callGraphAPI(accessToken, 'POST', endpoint, bodyContent);
 
-    return {
-      content: [{
-        type: 'text',
-        text: `Event '${subject}' has been successfully created.`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{
-          type: 'text',
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-
-    return {
-      content: [{
-        type: 'text',
-        text: `Error creating event: ${error.message}`
-      }]
-    };
-  }
+  return {
+    content: [{
+      type: 'text',
+      text: `Event '${subject}' has been successfully created.`
+    }]
+  };
 }
 
 module.exports = handleCreateEvent;

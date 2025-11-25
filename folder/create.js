@@ -23,36 +23,18 @@ async function handleCreateFolder(args) {
     };
   }
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Create folder with appropriate parent
-    const result = await createMailFolder(accessToken, folderName, parentFolder);
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: result.message
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Error creating folder: ${error.message}`
-      }]
-    };
-  }
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Create folder with appropriate parent
+  const result = await createMailFolder(accessToken, folderName, parentFolder);
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: result.message
+    }]
+  };
 }
 
 /**
