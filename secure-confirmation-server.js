@@ -25,44 +25,67 @@ function shell(title, inner) {
   <head>
     <meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/>
     <title>${title}</title>
-    <link rel='stylesheet' href='https://unpkg.com/@picocss/pico@2.0.6/css/pico.min.css'>
     <style>
       :root {
-        --brand-gradient: linear-gradient(135deg,#0ea5e9,#6366f1);
-        --brand-color: #0ea5e9;
-        --danger-color: #dc2626;
-        --ok-color: #16a34a;
+        --bg: #f8fafc; /* slate-50 */
+        --card: #ffffff; /* white */
+        --border: #e2e8f0; /* slate-200 */
+        --muted: #f1f5f9; /* slate-100 */
+        --fg: #0f172a; /* slate-900 */
+        --fg-muted: #475569; /* slate-600 */
+        --brand: #6366f1; /* indigo-500 */
+        --brand-600: #4f46e5;
+        --danger: #dc2626; /* red-600 */
+        --success: #16a34a; /* green-600 */
+        --shadow: 0 10px 25px -10px rgba(2,6,23,.35), 0 6px 16px -8px rgba(2,6,23,.2);
       }
-      body { padding:2.5rem 0 2rem; }
-      header.nav { margin-bottom:2rem; }
-      .container { max-width:820px; }
-      h1.brand { background:var(--brand-gradient); -webkit-background-clip:text; color:transparent; font-weight:600; letter-spacing:.5px; }
-      .surface { border:1px solid var(--pico-muted-border-color); border-radius:1rem; padding:1.75rem 2rem; box-shadow:0 6px 28px -6px rgba(0,0,0,.15),0 2px 10px -4px rgba(0,0,0,.07); backdrop-filter:saturate(180%) blur(4px); }
-      .meta-list { list-style:none; padding:0; margin:0 0 1rem; display:grid; gap:.5rem; }
-      .meta-list li { font-size:.85rem; background:var(--pico-muted-color); padding:.5rem .75rem; border-radius:.5rem; display:flex; justify-content:space-between; align-items:center; }
+      [data-theme="dark"] {
+        --bg: #0b1220; /* custom dark */
+        --card: #0f172a; /* slate-900 */
+        --border: #1f2937; /* gray-800 */
+        --muted: #0b1220;
+        --fg: #e5e7eb; /* gray-200 */
+        --fg-muted: #94a3b8; /* slate-400 */
+        --shadow: 0 14px 30px -14px rgba(0,0,0,.6), 0 8px 22px -10px rgba(0,0,0,.45);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { margin:0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+      .container { max-width: 880px; margin: 0 auto; padding: 24px; }
+      .nav { display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px; }
+      .brand-title { font-weight: 700; letter-spacing: .3px; }
+      .title-gradient { background: linear-gradient(135deg, var(--brand), #0ea5e9); -webkit-background-clip:text; color: transparent; }
+      .surface { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow); }
+      .meta-list { list-style:none; padding:0; margin:0 0 12px; display:grid; gap:8px; }
+      .meta-list li { font-size:.9rem; background: var(--muted); padding: 10px 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; }
       .meta-list strong { font-weight:600; opacity:.9; }
-      .preview { font-size:.75rem; line-height:1.25rem; white-space:pre-wrap; background:#0f172a; color:#f1f5f9; padding:.9rem 1rem; border-radius:.6rem; max-height:220px; overflow:auto; }
-      .badge { display:inline-block; padding:.35rem .6rem; font-size:.6rem; font-weight:600; letter-spacing:.8px; text-transform:uppercase; border-radius:.4rem; background:var(--pico-muted-border-color); }
-      .badge.pending { background:#f59e0b22; color:#b45309; }
-      .badge.confirmed { background:#16a34a22; color:#15803d; }
-      .badge.error { background:#dc262622; color:#b91c1c; }
-      .code-box { font-family:monospace; background:#1e293b; color:#fff; padding:.55rem .75rem; border-radius:.4rem; font-size:.85rem; letter-spacing:.5px; }
-      .flex-row { display:flex; gap:.6rem; align-items:center; }
-      .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
-      .copy-btn { cursor:pointer; font-size:.65rem; border:none; background:var(--brand-color); color:#fff; padding:.35rem .65rem; border-radius:.35rem; }
-      .copy-btn:hover { filter:brightness(.9); }
-      footer { margin-top:2rem; font-size:.6rem; opacity:.55; }
-      @media (max-width:640px){ .surface { padding:1.25rem 1.25rem; } .meta-list { grid-template-columns:1fr; } }
+      .preview { font-size:.85rem; line-height:1.35rem; white-space:pre-wrap; background:#0f172a; color:#e2e8f0; padding:12px 14px; border-radius:8px; max-height:240px; overflow:auto; border: 1px solid #1f2937; }
+      .badge { display:inline-block; padding:.35rem .6rem; font-size:.65rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; border-radius:6px; background: var(--muted); color: var(--fg-muted); border:1px solid var(--border); }
+      .badge.pending { background: #f59e0b22; color:#b45309; border-color:#f59e0b44; }
+      .badge.confirmed { background:#16a34a22; color:#15803d; border-color:#16a34a44; }
+      .badge.error { background:#dc262622; color:#b91c1c; border-color:#dc262644; }
+      .code-box { font-family: ui-monospace, Menlo, Consolas, monospace; background:#111827; color:#fff; padding:8px 10px; border-radius:8px; font-size:.9rem; border:1px solid #1f2937; }
+      .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+      .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+      .btn { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--fg); padding:8px 12px; font-weight:600; cursor:pointer; transition: all .15s ease; text-decoration:none; }
+      .btn:hover { background: var(--muted); }
+      .btn-primary { background: var(--brand); color:#fff; border-color: var(--brand-600); }
+      .btn-primary:hover { filter: brightness(.95); }
+      .btn-ghost { background: transparent; border-color: var(--border); }
+      .input { border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width: 220px; background: var(--card); color: var(--fg); }
+      label { font-size:.75rem; letter-spacing:.4px; text-transform:uppercase; font-weight:700; color: var(--fg-muted); display:block; margin-bottom:6px; }
+      small { color: var(--fg-muted); }
+      footer { margin-top:18px; font-size:.7rem; color: var(--fg-muted); }
+      @media (max-width:640px){ .surface { padding:16px; } }
     </style>
     <script>
       function toggleTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'}
-      function copyCode(){const el=document.getElementById('confirm-code'); if(!el) return; navigator.clipboard.writeText(el.textContent.trim()).then(()=>{const b=document.getElementById('copy-indicator'); if(b){b.textContent='Copied'; setTimeout(()=>b.textContent='Copy',1500);}})}
     </script>
   </head>
   <body>
     <nav class='container nav'>
-      <ul><li><strong>Secure Confirmation</strong></li></ul>
-      <ul><li><button onclick='toggleTheme()' class='secondary' aria-label='Toggle dark mode'>Theme</button></li></ul>
+      <div class='brand-title'>Secure Confirmation</div>
+      <button onclick='toggleTheme()' class='btn btn-ghost' aria-label='Toggle dark mode'>Theme</button>
     </nav>
     <main class='container'>${inner}</main>
     <footer class='container'>Outlook MCP • Human verification layer</footer>
@@ -73,32 +96,34 @@ app.get('/confirm/:actionId', (req, res) => {
   const { actionId } = req.params;
   const action = pendingActions[actionId];
   if (!action) {
-    return res.status(404).send(shell('Not Found', "<div class='card w-full max-w-md text-center'><h2 class='text-xl font-semibold mb-2'>Action Not Found</h2><p class='text-sm text-slate-600 dark:text-slate-300'>The requested confirmation has expired or is invalid.</p></div>"));
+    return res.status(404).send(shell('Not Found', "<section class='surface'><h2 style='margin-top:0;'>Action Not Found</h2><p style='color:var(--fg-muted)'>Expired or invalid action.</p></section>"));
   }
-  const preview = (action.body || '').slice(0, 320) || 'No body preview.';
+  // Simplified view: show truncated JSON payload only
+  const previewBody = (action.body || '').slice(0, 1000) || 'No body content.';
+  const payload = {
+    action: 'send-email',
+    to: action.to || null,
+    subject: action.subject || null,
+    bodyPreview: previewBody
+  };
+  const jsonEscaped = JSON.stringify(payload, null, 2).replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
   const html = shell('Secure Confirmation', `
     <section class='surface'>
-      <div style='display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.75rem;'>
-        <h1 class='brand' style='margin:0;'>Confirm Email Send</h1>
-        <span class='badge pending'>PENDING</span>
+      <div style='display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.85rem;'>
+        <h1 class='title-gradient' style='margin:0; font-size:1.15rem;'>Confirm Action</h1>
+        <span class='badge pending'>Pending</span>
       </div>
-      <p style='margin-top:0; font-size:.85rem;'>Review payload and enter the confirmation code to authorize dispatch.</p>
-      <ul class='meta-list'>
-        <li><strong>To</strong><span>${action.to ? action.to : '<em>Unknown</em>'}</span></li>
-        <li><strong>Subject</strong><span>${action.subject ? action.subject : '<em>(no subject)</em>'}</span></li>
-      </ul>
-      <div class='preview' aria-label='Email preview'>${preview.replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;')}</div>
+      <div class='preview' aria-label='Action JSON'><pre style='all:unset; font-family:inherit; white-space:pre-wrap;'>${jsonEscaped}</pre></div>
       <form method='POST' style='margin-top:1.2rem;'>
-        <label for='code' style='font-size:.75rem; letter-spacing:.5px; text-transform:uppercase; font-weight:600;'>Confirmation Code</label>
-        <div class='flex-row'>
+        <label for='code'>Confirmation Code</label>
+        <div class='row'>
           <span id='confirm-code' class='code-box' aria-live='polite'>${action.code}</span>
-          <button type='button' id='copy-indicator' class='copy-btn' onclick='copyCode()'>Copy</button>
-          <input id='code' name='code' required placeholder='Enter code' aria-required='true' />
+          <input id='code' name='code' required placeholder='Enter code shown above' aria-required='true' class='input' />
         </div>
         <div class='actions'>
-          <button type='submit'>Confirm & Send</button>
+          <button type='submit' class='btn btn-primary'>Confirm</button>
         </div>
-        <small style='display:block; margin-top:.6rem;'>Manual confirmation prevents unauthorized automated dispatch.</small>
+        <small style='display:block; margin-top:.6rem;'>Verify the JSON matches your intent before confirming.</small>
       </form>
     </section>`);
   res.send(html);
@@ -108,19 +133,19 @@ app.get('/confirm/:actionId', (req, res) => {
 app.post('/confirm/:actionId', (req, res) => {
   const { actionId } = req.params;
   const action = pendingActions[actionId];
-  if (!action) return res.status(404).send(shell('Not Found', '<article><h2>Action Not Found</h2><p>Expired or invalid action.</p></article>'));
+  if (!action) return res.status(404).send(shell('Not Found', "<section class='surface'><h2 style='margin-top:0;'>Action Not Found</h2><p style='color:var(--fg-muted)'>Expired or invalid action.</p></section>"));
   const userCode = (req.body.code || '').trim();
   if (userCode === action.code) {
     action.confirmed = true;
     return res.send(shell('Confirmed', `<section class='surface'><div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;'>
-      <h1 class='brand' style='margin:0; font-size:1.4rem;'>Action Confirmed</h1><span class='badge confirmed'>CONFIRMED</span></div>
-      <p style='font-size:.85rem;'>Your email has been approved and will be sent.</p>
-      <p style='font-size:.7rem; opacity:.7;'>You may close this window.</p></section>`));
+      <h1 class='title-gradient' style='margin:0; font-size:1.3rem;'>Action Confirmed</h1><span class='badge confirmed'>Confirmed</span></div>
+      <p style='font-size:.95rem; color: var(--fg-muted);'>Your email has been approved and will be sent.</p>
+      <p style='font-size:.8rem; color: var(--fg-muted);'>You may close this window.</p></section>`));
   }
   res.send(shell('Retry Confirmation', `<section class='surface'><div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;'>
-    <h1 style='margin:0; font-size:1.3rem; color:var(--danger-color);'>Incorrect Code</h1><span class='badge error'>ERROR</span></div>
-    <p style='font-size:.85rem;'>The code you entered does not match. Please retry.</p>
-    <p><a href='/confirm/${actionId}' role='button'>Try Again</a></p>
+    <h1 style='margin:0; font-size:1.2rem; color:var(--danger);'>Incorrect Code</h1><span class='badge error'>Error</span></div>
+    <p style='font-size:.95rem; color: var(--fg-muted);'>The code you entered does not match. Please retry.</p>
+    <p><a href='/confirm/${actionId}' class='btn'>Try Again</a></p>
   </section>`));
 });
 

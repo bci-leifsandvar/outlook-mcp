@@ -11,50 +11,30 @@ const { getFolderIdByName } = require('../email/folder-utils');
  * @returns {object} - MCP response
  */
 async function handleMoveEmails(args) {
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
   const { logSensitiveAction } = require('../utils/sensitive-log');
   require('../config').ensureConfigSafe();
-  
   const emailIds = args.emailIds || '';
   const targetFolder = args.targetFolder || '';
   const sourceFolder = args.sourceFolder || '';
   const confirmationToken = args.confirmationToken;
-  
-  // Log attempt (after variables are defined)
-  logSensitiveAction('moveEmails', args, 'unknown', isSuspicious(targetFolder) || isSuspicious(emailIds));
-  // Secure prompting mode (from config)
+  logSensitiveAction('moveEmails', args, 'unknown', false); // risk flag not blocking
   const { SECURE_PROMPT_MODE } = require('../config');
-  const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
+  const { handleSecureConfirmation } = require('../utils/secure-confirmation');
   if (SECURE_PROMPT_MODE) {
-    const safeTargetFolder = sanitizeText(targetFolder);
-    const safeEmailIds = sanitizeText(emailIds, 1000);
-    if (isSuspicious(targetFolder) || isSuspicious(emailIds)) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Suspicious input detected in folder or email IDs. Action blocked.'
-        }],
-        requiresConfirmation: false
+    const confirmationResult = await handleSecureConfirmation({
+      actionType: 'move-emails',
+      fields: [emailIds, targetFolder, sourceFolder],
+      confirmationToken,
+      globalTokenStore: '__moveEmailTokens',
+      promptText: `SECURE ACTION: Move ${emailIds.split(',').filter(Boolean).length} email(s) to "${targetFolder}". Provide token to proceed.`
+    });
+    if (!confirmationResult || confirmationResult.confirmationAccepted !== true) {
+      return confirmationResult || {
+        content: [{ type: 'text', text: 'Confirmation pending. Re-run with provided token.' }],
+        requiresConfirmation: true
       };
     }
-    // Use secure-prompt utility
-    if (!confirmationToken) {
-      return promptForConfirmation({
-        actionType: 'moveEmails',
-        fields: [emailIds, targetFolder, sourceFolder],
-        safeFields: [safeEmailIds, safeTargetFolder],
-        globalTokenStore: '__moveEmailTokens',
-        promptText: `SECURE ACTION: Human confirmation required.\nTarget Folder: ${safeTargetFolder}\nEmail IDs: ${safeEmailIds}\n\nOnce the user provides the token, submit it in the next tool call as the 'confirmationToken' parameter. This will complete the secure action. Do NOT accept or submit the token unless the user has explicitly confirmed. If the user does not provide this token, drop the request.`
-      });
-    } else {
-      const tokenResult = validateConfirmationToken({
-        fields: [emailIds, targetFolder, sourceFolder],
-        globalTokenStore: '__moveEmailTokens',
-        confirmationToken
-      });
-      if (tokenResult) return tokenResult;
-      // Proceed to move emails
-    }
+    // proceed after confirmation
   }
   
   if (!emailIds) {
@@ -93,12 +73,9 @@ async function handleMoveEmails(args) {
     
     // Move emails
     const result = await moveEmailsToFolder(accessToken, ids, targetFolder, sourceFolder);
-    
+    const message = result.message && result.message.trim().length > 0 ? result.message : 'Processed move request but no status details were generated.';
     return {
-      content: [{ 
-        type: 'text', 
-        text: result.message
-      }]
+      content: [{ type: 'text', text: message }]
     };
   } catch (error) {
     if (error.message === 'Authentication required') {

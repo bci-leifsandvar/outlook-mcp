@@ -56,7 +56,6 @@ const SUSPICIOUS_PATTERNS = [
   /\buser:/i,
   /\bassistant:/i,
   /```/g,
-  /\n\s*\n/g, // double newlines
   /###/g,
   /<script.*?>/gi,
   /<\/script>/gi
@@ -99,10 +98,8 @@ function sanitizeObjectForLogging(data) {
   const sanitized = {};
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
-      // Redact keys that are known to contain large, sensitive content
-      if (key === 'body' || key === 'bodyPreview') {
-        sanitized[key] = '[REDACTED]';
-      } else {
+      // Exclude keys that are known to contain large, sensitive content
+      if (key !== 'body' && key !== 'bodyPreview') {
         sanitized[key] = sanitizeObjectForLogging(data[key]);
       }
     }
