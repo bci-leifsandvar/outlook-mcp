@@ -28,7 +28,7 @@ async function handleSendEmail(args) {
   // Add current timestamp
   rateLimitStore[userKey].push(now);
   const { logSensitiveAction } = require('../utils/sensitive-log');
-  // Log attempt (before confirmation)
+  // Log attempt (before confirmation) with risk flag
   const { isSuspicious } = require('../utils/sanitize');
   require('../config').ensureConfigSafe();
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, confirmationToken } = args;
@@ -38,12 +38,17 @@ async function handleSendEmail(args) {
   const sanitizeHtml = require('sanitize-html');
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   if (SECURE_PROMPT_MODE) {
+    // Provide a more useful preview (strip scripts, allow up to 1000 chars, keep text/HTML sans tags)
+    const previewBody = (body || '')
+      .replace(/<script.*?>[\s\S]*?<\/script>/gi, '')
+      .slice(0, 1000);
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'send-email',
-      fields: [to || '', subject || '', (body || '').slice(0, 200)],
+      fields: [to || '', subject || '', previewBody],
+      safeFields: [to || '', subject || '', previewBody],
       confirmationToken,
       globalTokenStore: '__sendEmailTokens',
-      promptText: `SECURE ACTION: Human confirmation required.\nAction: send-email\nTo: ${to}\nSubject: ${subject}\nBody length: ${(body || '').length} chars\nIf you approve, provide the confirmation token.`
+      promptText: `SECURE ACTION: Human confirmation required.\nAction: send-email\nTo: ${to}\nSubject: ${subject}\nBody length: ${(body || '').length} chars (preview shows first ${previewBody.length} chars)\nIf you approve, provide the confirmation token.`
     });
     // Block unless we have an explicit acceptance object
     if (!confirmationResult || confirmationResult.confirmationAccepted !== true) {

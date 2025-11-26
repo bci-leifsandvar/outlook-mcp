@@ -5,6 +5,10 @@ const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { getFolderIdByName } = require('../email/folder-utils');
 const { getInboxRules } = require('./list');
+const { isSuspicious } = require('../utils/sanitize');
+const { logSensitiveAction } = require('../utils/sensitive-log');
+const config = require('../config');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 /**
  * Create rule handler
@@ -12,9 +16,7 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
-  const { isSuspicious } = require('../utils/sanitize');
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  require('../config').ensureConfigSafe();
+  config.ensureConfigSafe();
   
   const {
     name,
@@ -32,9 +34,7 @@ async function handleCreateRule(args) {
   logSensitiveAction('createRule', args, 'unknown', [name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious));
   
   // Secure prompting mode (from config)
-  const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE) {
-    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+  if (config.SECURE_PROMPT_MODE) {
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'createRule',
       fields: [name, fromAddresses, containsSubject, moveToFolder],

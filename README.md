@@ -111,6 +111,28 @@ The server is designed to be launched by an MCP client like Claude Desktop. The 
 3.  **Browser Sign-in**: Claude will provide a URL. Open it in your browser, sign in to your Microsoft account, and grant the requested permissions.
 4.  **Ready**: Upon success, tokens are stored securely in `~/.outlook-mcp-tokens.json`, and you can start using the tools.
 
+## 5. Security and Access Control
+
+### OAuth Scopes
+
+The application requests specific OAuth 2.0 scopes (e.g., `Mail.Read`, `Calendars.ReadWrite`) during the authentication flow. These scopes define the maximum permissions the application is granted. Users must consent to these scopes, ensuring they are aware of what the application can do.
+
+### Secure Confirmation
+
+For sensitive actions such as sending an email or creating a calendar event, the server requires an additional confirmation step. This prevents accidental or unauthorized actions and is enabled by default.
+
+### Role-Based Access Control (RBAC) with Microsoft Entra ID
+
+For enterprise environments, it is highly recommended to manage access control centrally using **Microsoft Entra ID (formerly Azure AD)**.
+
+While this application uses OAuth scopes to define its permissions, Entra ID provides a more granular way to control which *users* or *groups* can use the application. Administrators can configure the Azure App Registration to:
+
+1.  **Require User Assignment**: In the App Registration settings under **Properties**, setting "User assignment required?" to "Yes" ensures that only explicitly assigned users or groups can sign in and use the application.
+2.  **Define App Roles**: Under **App roles**, you can create custom roles (e.g., `Email.Reader`, `Calendar.Writer`, `Admin`).
+3.  **Assign Users to Roles**: In the corresponding Enterprise Application, you can assign these roles to specific users and groups.
+
+The application can then be extended to check a user's assigned roles from their ID token after they authenticate. This allows for true RBAC, where a user's ability to call a specific tool (like `sendEmail`) is determined by their role assignment in Entra ID, providing centralized, auditable, and secure access management.
+
 ## Troubleshooting
 
 #### Error: `listen EADDRINUSE: address already in use :::3333`

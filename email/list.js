@@ -5,7 +5,7 @@ const config = require('../config');
 const { callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { resolveFolderPath } = require('./folder-utils');
-const { maskPII } = require('../utils/sanitize');
+const { maskPII } = require('../utils/sanitize'); // optional masking for args.mask
 
 /**
  * List emails handler
@@ -29,8 +29,7 @@ async function handleListEmails(args) {
       $orderby: 'receivedDateTime desc',
       $select: config.EMAIL_SELECT_FIELDS
     };
-    
-    // Make API call with pagination support
+
     const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, queryParams, requestedCount);
     
     if (!response.value || response.value.length === 0) {
@@ -42,7 +41,7 @@ async function handleListEmails(args) {
       };
     }
     
-    // Format results, redacting email addresses and annotating ID diagnostics
+    // Format results with original sender and subject for usability; diagnostics retained
     const emailList = response.value.map((email, index) => {
       const sender = email.from ? email.from.emailAddress : { name: 'Unknown', address: 'unknown' };
       const date = new Date(email.receivedDateTime).toLocaleString();
@@ -55,10 +54,10 @@ async function handleListEmails(args) {
       const patternHint = hasCompositePattern ? '' : ' (no-composite-pattern)';
       const diag = `${paddingHint}${patternHint}`.trim();
       const diagSuffix = diag ? ` Diagnostics:${diag}` : '';
-
-      const rawString = `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${id}${diagSuffix}\nFolder: ${folderId}\n`;
-      return maskPII(rawString);
-    }).join('\n');
+      let entry = `${index + 1}. ${readStatus}${date} - From: ${sender.name} <${sender.address}>\nSubject: ${email.subject || '(no subject)'}\nID: ${id}${diagSuffix}\nFolder: ${folderId}`;
+      if (args.mask) entry = maskPII(entry);
+      return entry;
+    }).join('\n\n');
     
     return {
       content: [{ 

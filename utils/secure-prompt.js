@@ -29,9 +29,11 @@ function promptForConfirmation({ actionType, fields, safeFields, globalTokenStor
   // Captcha/browser confirmation flow
   if (useCaptcha) {
     // Prepare POST body for secure-confirmation-server
+    // Use original fields for "to" and "subject" to avoid losing content via aggressive sanitization.
+    // Body is truncated + sanitized for preview safety.
     const payload = JSON.stringify({
-      to: safeFields && safeFields[0] ? safeFields[0] : '',
-      subject: safeFields && safeFields[1] ? safeFields[1] : actionType,
+      to: (fields && fields[0]) ? fields[0] : '',
+      subject: (fields && fields[1]) ? fields[1] : actionType,
       body: safeFields && safeFields[2] ? safeFields[2] : ''
     });
 

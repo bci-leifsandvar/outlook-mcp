@@ -4,7 +4,6 @@
 const config = require('../config');
 const { callGraphAPI, callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
-const { maskPII } = require('../utils/sanitize');
 const logger = require('../utils/logger');
 
 // Cache for fuzzy ID matches (shortId -> fullId)
@@ -108,16 +107,20 @@ async function handleReadEmail(args) {
       body = email.bodyPreview || 'No content';
     }
 
-    const formattedEmail = `From: ${maskPII(sender)}
-  To: ${maskPII(to)}
-  ${cc !== 'None' ? `CC: ${maskPII(cc)}\n` : ''}${bcc !== 'None' ? `BCC: ${maskPII(bcc)}\n` : ''}Subject: ${maskPII(email.subject)}
-  Date: ${date}
-  Importance: ${email.importance || 'normal'}
-  Has Attachments: ${email.hasAttachments ? 'Yes' : 'No'}
-  ID Used: ${attemptedId} ${fallbackNote}
+    let formattedEmail = `From: ${sender}
+To: ${to}
+${cc !== 'None' ? `CC: ${cc}\n` : ''}${bcc !== 'None' ? `BCC: ${bcc}\n` : ''}Subject: ${email.subject}
+Date: ${date}
+Importance: ${email.importance || 'normal'}
+Has Attachments: ${email.hasAttachments ? 'Yes' : 'No'}
+ID Used: ${attemptedId} ${fallbackNote}
 
-  ${maskPII(body)}`;
-
+${body}`;
+    if (args.mask) {
+      // Lazy import to avoid cycle risk
+      const { maskPII } = require('../utils/sanitize');
+      formattedEmail = maskPII(formattedEmail);
+    }
     return { content: [{ type: 'text', text: formattedEmail }] };
   } catch (error) {
     const code = extractGraphErrorCode(error);

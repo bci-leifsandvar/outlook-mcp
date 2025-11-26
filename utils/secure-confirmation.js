@@ -2,8 +2,8 @@
  * Secure Confirmation Tool for MCP
  * Handles token-based human confirmation for sensitive actions
  */
-const { promptForConfirmation, validateConfirmationToken } = require('../utils/secure-prompt');
-const { sanitizeText, isSuspicious } = require('../utils/sanitize');
+const { promptForConfirmation, validateConfirmationToken } = require('./secure-prompt');
+const { sanitizeText } = require('./sanitize');
 
 /**
  * Secure confirmation handler
@@ -12,17 +12,7 @@ const { sanitizeText, isSuspicious } = require('../utils/sanitize');
  */
 async function handleSecureConfirmation(args) {
   const { actionType, fields = [], safeFields = [], confirmationToken, globalTokenStore = '__secureActionsTokens', promptText } = args;
-  // Sanitize and check for suspicious input
-  if (fields.some(isSuspicious)) {
-    return {
-      content: [{
-        type: 'text',
-        text: 'Suspicious input detected in secure confirmation fields. Action blocked.'
-      }],
-      requiresConfirmation: false,
-      status: 'blocked'
-    };
-  }
+  // Sanitize inputs; do NOT block on suspicion — always prompt
   if (!confirmationToken) {
     const result = await promptForConfirmation({
       actionType,

@@ -1,4 +1,5 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const SCRIPT_VERSION = '2.0.0-env-fix';
 process.stdout.write(`--- Outlook Auth Server ${SCRIPT_VERSION} starting up ---\n`);
@@ -9,10 +10,10 @@ const querystring = require('querystring');
 const https = require('https');
 const fs = require('fs');
 const config = require('../config');
+const logger = require('../utils/logger');
 const { AUTH_CONFIG, AUTH_SERVER_BASE_URL, AUTH_PORT } = config;
 
 function startAuthServer(port = AUTH_PORT, silent = false) {
-  const logger = require('../utils/logger');
   if (!silent) logger.info('Starting Outlook Authentication Server');
 
   // Create HTTP server
