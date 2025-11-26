@@ -13,6 +13,7 @@ const emailTools = [
   {
     name: 'list-emails',
     description: 'Lists recent emails from your inbox',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -32,6 +33,7 @@ const emailTools = [
   {
     name: 'search-emails',
     description: 'Search for emails using various criteria',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -75,6 +77,7 @@ const emailTools = [
   {
     name: 'read-email',
     description: 'Reads the content of a specific email',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -90,6 +93,7 @@ const emailTools = [
   {
     name: 'send-email',
     description: 'Composes and sends a new email. When secure mode is enabled, requires human confirmation via token.',
+    requiredScopes: ['Mail.Send'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -134,6 +138,7 @@ const emailTools = [
   {
     name: 'mark-as-read',
     description: 'Marks an email as read or unread',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

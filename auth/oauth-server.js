@@ -48,20 +48,21 @@ const templates = {
     </html>`
 };
 
-function createAuthConfig(envPrefix = 'MS_') {
+function createAuthConfig(config) {
+  const { AUTH_CONFIG } = config;
   return {
-    clientId: process.env[`${envPrefix}CLIENT_ID`] || '',
-    clientSecret: process.env[`${envPrefix}CLIENT_SECRET`] || '',
-    redirectUri: process.env[`${envPrefix}REDIRECT_URI`] || 'http://localhost:3333/auth/callback',
-    scopes: (process.env[`${envPrefix}SCOPES`] || 'offline_access User.Read Mail.Read').split(' '),
-    tokenEndpoint: process.env[`${envPrefix}TOKEN_ENDPOINT`] || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    authEndpoint: process.env[`${envPrefix}AUTH_ENDPOINT`] || 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+    clientId: AUTH_CONFIG.clientId,
+    clientSecret: AUTH_CONFIG.clientSecret,
+    redirectUri: AUTH_CONFIG.redirectUri,
+    scopes: AUTH_CONFIG.scopes,
+    tokenEndpoint: process.env.MS_TOKEN_ENDPOINT || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    authEndpoint: process.env.MS_AUTH_ENDPOINT || 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
   };
 }
 
-function setupOAuthRoutes(app, tokenStorage, authConfig, envPrefix = 'MS_') {
+function setupOAuthRoutes(app, tokenStorage, authConfig) {
   if (!authConfig) {
-    authConfig = createAuthConfig(envPrefix);
+    throw new Error('setupOAuthRoutes requires a valid authConfig object.');
   }
 
   if (!(tokenStorage instanceof TokenStorage)) {

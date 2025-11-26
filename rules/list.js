@@ -11,38 +11,23 @@ const { ensureAuthenticated } = require('../auth');
  */
 async function handleListRules(args) {
   const includeDetails = args.includeDetails === true;
-  
   try {
-    // Get access token
     const accessToken = await ensureAuthenticated();
-    
-    // Get all inbox rules
     const rules = await getInboxRules(accessToken);
-    
-    // Format the rules based on detail level
     const formattedRules = formatRulesList(rules, includeDetails);
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: formattedRules
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
+    return { content: [{ type: 'text', text: formattedRules }] };
+  } catch (err) {
+    // More helpful messaging for common Graph failures
+    const msg = err && err.message ? err.message : 'Unknown error';
+    let hint = '';
+    if (/AccessDenied|Forbidden|403/i.test(msg)) {
+      hint = '\nHint: The application may be missing Mail.ReadWrite permissions for message rules.';
+    } else if (/InvalidAuthenticationToken/i.test(msg)) {
+      hint = "\nHint: Token may be expired. Re-run 'authenticate' then retry.";
     }
-    
     return {
-      content: [{ 
-        type: 'text', 
-        text: `Error listing rules: ${error.message}`
-      }]
+      content: [{ type: 'text', text: `Error listing inbox rules: ${msg}${hint}` }],
+      isError: true
     };
   }
 }
@@ -89,7 +74,7 @@ function formatRulesList(rules, includeDetails) {
     // Detailed format
     const detailedRules = sortedRules.map((rule, index) => {
       // Format rule header with sequence
-      let ruleText = `${index + 1}. ${rule.displayName}${rule.isEnabled ? '' : ' (Disabled)'} - Sequence: ${rule.sequence || 'N/A'}`;
+      let ruleText = `${index + 1}. ${rule.displayName}${rule.isEnabled ? '' : ' (Disabled)'} - Sequence: ${rule.sequence || 'N/A'} | id: ${rule.id || 'NO_ID'}`;
       
       // Format conditions
       const conditions = formatRuleConditions(rule);
@@ -110,7 +95,7 @@ function formatRulesList(rules, includeDetails) {
   } else {
     // Simple format
     const simpleRules = sortedRules.map((rule, index) => {
-      return `${index + 1}. ${rule.displayName}${rule.isEnabled ? '' : ' (Disabled)'} - Sequence: ${rule.sequence || 'N/A'}`;
+      return `${index + 1}. ${rule.displayName}${rule.isEnabled ? '' : ' (Disabled)'} - Seq: ${rule.sequence || 'N/A'} | id: ${rule.id || 'NO_ID'}`;
     });
     
     return `Found ${rules.length} inbox rules (sorted by execution order):\n\n${simpleRules.join('\n')}\n\nTip: Use 'list-rules with includeDetails=true' to see more information about each rule.`;

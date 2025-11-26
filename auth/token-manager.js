@@ -3,6 +3,7 @@
  */
 const fs = require('fs');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 // Global variable to store tokens
 let cachedTokens = null;
@@ -14,38 +15,32 @@ let cachedTokens = null;
 function loadTokenCache() {
   try {
     const tokenPath = config.AUTH_CONFIG.tokenStorePath;
-    console.error(`[DEBUG] Attempting to load tokens from: ${tokenPath}`);
-    console.error(`[DEBUG] HOME directory: ${process.env.HOME}`);
-    console.error(`[DEBUG] Full resolved path: ${tokenPath}`);
+    logger.debug('Attempting to load tokens', { tokenPath, home: process.env.HOME, resolvedPath: tokenPath });
     
     // Log file existence and details
     if (!fs.existsSync(tokenPath)) {
-      console.error('[DEBUG] Token file does not exist');
+      logger.debug('Token file does not exist', { tokenPath });
       return null;
     }
     
     const stats = fs.statSync(tokenPath);
-    console.error(`[DEBUG] Token file stats:
-      Size: ${stats.size} bytes
-      Created: ${stats.birthtime}
-      Modified: ${stats.mtime}`);
+    logger.debug('Token file stats', { size: stats.size, created: stats.birthtime, modified: stats.mtime });
     
     const tokenData = fs.readFileSync(tokenPath, 'utf8');
-    console.error('[DEBUG] Token file contents length:', tokenData.length);
-    console.error('[DEBUG] Token file first 200 characters:', tokenData.slice(0, 200));
+    logger.debug('Token file contents', { length: tokenData.length, preview: tokenData.slice(0, 200) });
     
     try {
       const tokens = JSON.parse(tokenData);
-      console.error('[DEBUG] Parsed tokens keys:', Object.keys(tokens));
+      logger.debug('Parsed tokens keys', { keys: Object.keys(tokens) });
       
       // Log each key's value to see what's present
       Object.keys(tokens).forEach(key => {
-        console.error(`[DEBUG] ${key}: ${typeof tokens[key]}`);
+        logger.debug('Token key type', { key, type: typeof tokens[key] });
       });
       
       // Check for access token presence
       if (!tokens.access_token) {
-        console.error('[DEBUG] No access_token found in tokens');
+        logger.debug('No access_token found');
         return null;
       }
       
@@ -53,11 +48,10 @@ function loadTokenCache() {
       const now = Date.now();
       const expiresAt = tokens.expires_at || 0;
       
-      console.error(`[DEBUG] Current time: ${now}`);
-      console.error(`[DEBUG] Token expires at: ${expiresAt}`);
+      logger.debug('Token timing', { now, expiresAt });
       
       if (now > expiresAt) {
-        console.error('[DEBUG] Token has expired');
+        logger.debug('Token expired');
         return null;
       }
       
@@ -65,11 +59,11 @@ function loadTokenCache() {
       cachedTokens = tokens;
       return tokens;
     } catch (parseError) {
-      console.error('[DEBUG] Error parsing token JSON:', parseError);
+      logger.error('Error parsing token JSON', { error: parseError.message });
       return null;
     }
   } catch (error) {
-    console.error('[DEBUG] Error loading token cache:', error);
+    logger.error('Error loading token cache', { error: error.message });
     return null;
   }
 }
@@ -82,16 +76,16 @@ function loadTokenCache() {
 function saveTokenCache(tokens) {
   try {
     const tokenPath = config.AUTH_CONFIG.tokenStorePath;
-    console.error(`Saving tokens to: ${tokenPath}`);
+    logger.info('Saving tokens', { tokenPath });
     
     fs.writeFileSync(tokenPath, JSON.stringify(tokens, null, 2));
-    console.error('Tokens saved successfully');
+    logger.info('Tokens saved successfully');
     
     // Update the cache
     cachedTokens = tokens;
     return true;
   } catch (error) {
-    console.error('Error saving token cache:', error);
+    logger.error('Error saving token cache', { error: error.message });
     return false;
   }
 }
@@ -101,12 +95,21 @@ function saveTokenCache(tokens) {
  * @returns {string|null} - The access token or null if not available
  */
 function getAccessToken() {
+  // If we already have a cached token, ensure it's valid for current mode
   if (cachedTokens && cachedTokens.access_token) {
+    if (!config.USE_TEST_MODE && /^test_access_token_/i.test(cachedTokens.access_token)) {
+      // Ignore leftover test token when not in test mode
+      return null;
+    }
     return cachedTokens.access_token;
   }
-  
   const tokens = loadTokenCache();
-  return tokens ? tokens.access_token : null;
+  if (!tokens) return null;
+  if (!config.USE_TEST_MODE && /^test_access_token_/i.test(tokens.access_token)) {
+    // Leftover test token file; treat as unauthenticated
+    return null;
+  }
+  return tokens.access_token;
 }
 
 /**

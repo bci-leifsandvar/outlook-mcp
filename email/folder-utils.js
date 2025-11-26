@@ -6,7 +6,7 @@ const { callGraphAPI } = require('../utils/graph-api');
 /**
  * Cache of folder information to reduce API calls
  * Format: { userId: { folderName: { id, path } } }
- */
+const _folderCache = {};
 const folderCache = {};
 
 /**

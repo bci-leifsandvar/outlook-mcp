@@ -13,6 +13,7 @@ const calendarTools = [
   {
     name: 'list-events',
     description: 'Lists upcoming events from your calendar',
+    requiredScopes: ['Calendars.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -28,6 +29,7 @@ const calendarTools = [
   {
     name: 'decline-event',
     description: 'Declines a calendar event',
+    requiredScopes: ['Calendars.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,6 +53,7 @@ const calendarTools = [
   {
     name: 'create-event',
     description: 'Creates a new calendar event. When secure mode is enabled, requires human confirmation.',
+    requiredScopes: ['Calendars.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -89,6 +92,7 @@ const calendarTools = [
   {
     name: 'cancel-event',
     description: 'Cancels a calendar event. When secure mode is enabled, requires human confirmation.',
+    requiredScopes: ['Calendars.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -112,6 +116,7 @@ const calendarTools = [
   {
     name: 'delete-event',
     description: 'Deletes a calendar event. When secure mode is enabled, requires human confirmation.',
+    requiredScopes: ['Calendars.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {

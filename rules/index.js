@@ -3,105 +3,19 @@
  */
 const { handleListRules } = require('./list');
 const { handleCreateRule } = require('./create');
+const { editRuleSequenceTool } = require('./edit-sequence');
 
-// Import required utilities
-const { ensureAuthenticated } = require('../auth');
-const { callGraphAPI } = require('../utils/graph-api');
+
 
 // Import getInboxRules for the edit sequence tool
-const { getInboxRules } = require('./list');
-
-/**
- * Edit rule sequence handler
- * @param {object} args - Tool arguments
- * @returns {object} - MCP response
- */
-async function handleEditRuleSequence(args) {
-  const { ruleName, sequence, confirmationToken } = args;
-  const { SECURE_PROMPT_MODE } = require('../config');
-  const { handleSecureConfirmation } = require('../utils/secure-confirmation');
-  if (!ruleName) {
-    return {
-      content: [{ 
-        type: 'text', 
-        text: 'Rule name is required. Please specify the exact name of an existing rule.'
-      }]
-    };
-  }
-  if (!sequence || isNaN(sequence) || sequence < 1) {
-    return {
-      content: [{ 
-        type: 'text', 
-        text: 'A positive sequence number is required. Lower numbers run first (higher priority).'
-      }]
-    };
-  }
-  if (SECURE_PROMPT_MODE) {
-    const confirmationResult = await handleSecureConfirmation({
-      actionType: 'editRuleSequence',
-      fields: [ruleName, sequence],
-      confirmationToken,
-      globalTokenStore: '__editRuleSequenceTokens',
-      promptText: `SECURE ACTION: Human confirmation required.\nRule: ${ruleName}\nNew Sequence: ${sequence}`
-    });
-    if (confirmationResult && confirmationResult.confirmationAccepted !== true) {
-      return confirmationResult;
-    }
-    // Proceed to edit rule sequence if confirmationAccepted
-  }
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    // Get all rules
-    const rules = await getInboxRules(accessToken);
-    // Find the rule by name
-    const rule = rules.find(r => r.displayName === ruleName);
-    if (!rule) {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Rule with name "${ruleName}" not found.`
-        }]
-      };
-    }
-    // Update the rule sequence
-    const updateResult = await callGraphAPI(
-      accessToken,
-      'PATCH',
-      `me/mailFolders/inbox/messageRules/${rule.id}`,
-      {
-        sequence: sequence
-      }
-    );
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Successfully updated the sequence of rule "${ruleName}" to ${sequence}.`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Error updating rule sequence: ${error.message}`
-      }]
-    };
-  }
-}
+// const { getInboxRules } = require('./list');
 
 // Rules management tool definitions
 const rulesTools = [
   {
     name: 'list-rules',
     description: 'Lists inbox rules in your Outlook account',
+    requiredScopes: ['Mail.Read'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -117,6 +31,7 @@ const rulesTools = [
   {
     name: 'create-rule',
     description: 'Creates a new inbox rule',
+    requiredScopes: ['Mail.ReadWrite'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -157,30 +72,12 @@ const rulesTools = [
     },
     handler: handleCreateRule
   },
-  {
-    name: 'edit-rule-sequence',
-    description: 'Changes the execution order of an existing inbox rule',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        ruleName: {
-          type: 'string',
-          description: 'Name of the rule to modify'
-        },
-        sequence: {
-          type: 'number',
-          description: 'New sequence value for the rule (lower numbers run first)'
-        }
-      },
-      required: ['ruleName', 'sequence']
-    },
-    handler: handleEditRuleSequence
-  }
+  editRuleSequenceTool
 ];
 
 module.exports = {
   rulesTools,
   handleListRules,
   handleCreateRule,
-  handleEditRuleSequence
+  editRuleSequenceTool
 };

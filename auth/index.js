@@ -10,7 +10,7 @@ const { authTools } = require('./tools');
  * @returns {Promise<string>} - Access token
  * @throws {Error} - If authentication fails
  */
-async function ensureAuthenticated(forceNew = false) {
+function ensureAuthenticated(forceNew = false) {
   if (forceNew) {
     // Force re-authentication
     throw new Error('Authentication required');

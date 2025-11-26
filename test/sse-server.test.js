@@ -31,7 +31,7 @@ const startServer = (done) => {
         if (!sseApp) {
             try {
                 // Use relative path for Jest compatibility
-                sseApp = require('../../sse-server.js').app;
+                sseApp = require('../sse-server.js').app;
             } catch (err) {
                 console.error('Failed to require sse-server.js:', err);
                 throw err;

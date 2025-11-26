@@ -5,6 +5,7 @@ const config = require('../config');
 const { callGraphAPIPaginated } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { resolveFolderPath } = require('./folder-utils');
+const { maskPII } = require('../utils/sanitize'); // optional masking for args.mask
 
 /**
  * List emails handler
@@ -28,8 +29,7 @@ async function handleListEmails(args) {
       $orderby: 'receivedDateTime desc',
       $select: config.EMAIL_SELECT_FIELDS
     };
-    
-    // Make API call with pagination support
+
     const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, queryParams, requestedCount);
     
     if (!response.value || response.value.length === 0) {
@@ -41,14 +41,23 @@ async function handleListEmails(args) {
       };
     }
     
-    // Format results
+    // Format results with original sender and subject for usability; diagnostics retained
     const emailList = response.value.map((email, index) => {
       const sender = email.from ? email.from.emailAddress : { name: 'Unknown', address: 'unknown' };
       const date = new Date(email.receivedDateTime).toLocaleString();
       const readStatus = email.isRead ? '' : '[UNREAD] ';
-      
-      return `${index + 1}. ${readStatus}${date} - From: ${sender.name} (${sender.address})\nSubject: ${email.subject}\nID: ${email.id}\n`;
-    }).join('\n');
+      const id = email.id || 'UNKNOWN_ID';
+      const folderId = email.parentFolderId || 'UNKNOWN_FOLDER';
+      const hasCompositePattern = /AAAAAAEMA/.test(id);
+      const lengthMod = id.length % 4;
+      const paddingHint = lengthMod === 0 ? '' : ` (suspect: missing padding, len%4=${lengthMod})`;
+      const patternHint = hasCompositePattern ? '' : ' (no-composite-pattern)';
+      const diag = `${paddingHint}${patternHint}`.trim();
+      const diagSuffix = diag ? ` Diagnostics:${diag}` : '';
+      let entry = `${index + 1}. ${readStatus}${date} - From: ${sender.name} <${sender.address}>\nSubject: ${email.subject || '(no subject)'}\nID: ${id}${diagSuffix}\nFolder: ${folderId}`;
+      if (args.mask) entry = maskPII(entry);
+      return entry;
+    }).join('\n\n');
     
     return {
       content: [{ 

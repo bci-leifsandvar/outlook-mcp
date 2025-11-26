@@ -1,14 +1,13 @@
-// Only load .env if not running under Claude config (i.e., if not already provided)
-if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING) {
+// Load .env unless a known MCP client provides its own environment
+// Skip when running under Claude, OpenAI ChatGPT MCP wrapper, or generic MCP orchestrators
+if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING &&
+    !process.env.OPENAI_MCP && !process.env.MCP_CLIENT) {
   require('dotenv').config();
 }
-/**
- * Outlook MCP Server - Main entry point
- * FIXED: Clearer onboarding instructions for secure confirmation flow
- * 
- * A Model Context Protocol server that provides access to
- * Microsoft Outlook through the Microsoft Graph API.
- */
+
+const path = require('path');
+const { spawn } = require('child_process');
+const net = require('net');
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { 
@@ -18,74 +17,142 @@ const {
   ListPromptsRequestSchema
 } = require('@modelcontextprotocol/sdk/types.js');
 const config = require('./config');
-
-// Import module tools
+const logger = require('./utils/logger');
+const { sanitizeText, isSuspicious } = require('./utils/sanitize');
 const { authTools } = require('./auth');
 const { calendarTools } = require('./calendar');
 const { emailTools } = require('./email');
 const { folderTools } = require('./folder');
 const { rulesTools } = require('./rules');
+const { mailboxTools } = require('./mailbox');
+const { contactsTools } = require('./contacts');
 
-// Log startup information
-const { maskPIIinObject } = require('./utils/sanitize');
-function structuredLog(level, message, details = {}) {
-  // Mask PII in details
-  const maskedDetails = maskPIIinObject(details);
-  const entry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...maskedDetails
-  };
-  // Output as JSON string for SIEM/monitoring compliance
-  console.error(JSON.stringify(entry));
+/**
+ * Outlook MCP Server - Main entry point
+ * FIXED: Clearer onboarding instructions for secure confirmation flow
+ * 
+ * A Model Context Protocol server that provides access to
+ * Microsoft Outlook through the Microsoft Graph API.
+ * Compatible with any MCP client (Claude Desktop, OpenAI / ChatGPT MCP workers,
+ * generic OpenAPI MCP bridges, and other tool runners) via stdio transport.
+ */
+
+// Load .env unless a known MCP client provides its own environment
+// Skip when running under Claude, OpenAI ChatGPT MCP wrapper, or generic MCP orchestrators
+if (!process.env.CLAUDE_CONFIG && !process.env.CLAUDE_RUNNING &&
+    !process.env.OPENAI_MCP && !process.env.MCP_CLIENT) {
+  require('dotenv').config();
+}
+function isPortInUse(port, cb) {
+  const tester = net.createServer()
+    .once('error', err => (err.code === 'EADDRINUSE' ? cb(true) : cb(false)))
+    .once('listening', () => tester.once('close', () => cb(false)).close())
+    .listen(port);
 }
 
-// IMPROVED: Clearer onboarding message for Claude with explicit instructions
+function spawnSubserver(port, scriptPath, name) {
+  isPortInUse(port, (inUse) => {
+    if (!inUse) {
+      const subProcess = spawn(process.execPath, [scriptPath], {
+        stdio: 'pipe', // Use 'pipe' to capture output
+        detached: true,
+        env: { ...process.env }
+      });
+      logger.info(`Spawned ${name} on port ${port}`, { pid: subProcess.pid });
+
+      // Log output from the subprocess
+      subProcess.stdout.on('data', (data) => {
+        logger.info(`[${name} stdout]`, { output: data.toString().trim() });
+      });
+      subProcess.stderr.on('data', (data) => {
+        logger.error(`[${name} stderr]`, { error: data.toString().trim() });
+      });
+
+      subProcess.unref(); // Allow parent to exit independently
+    } else {
+      logger.warn(`${name} already running on port ${port}`);
+    }
+  });
+}
+
+// Auth server spawn modes controlled by DISABLE_AUTH_SUBSERVER env var:
+// undefined / not 'true' / not 'inline' => spawn as separate subprocess
+// 'inline' => start in same process (legacy/non-subprocess mode)
+// 'true' => do not start (user must run manually)
+const authControl = (process.env.DISABLE_AUTH_SUBSERVER || '').toLowerCase();
+if (authControl === 'inline') {
+  try {
+    const { startAuthServer } = require('./auth/outlook-auth-server');
+    startAuthServer(3333, true); // silent inline startup
+    logger.warn('Started Outlook Auth Server inline (DISABLE_AUTH_SUBSERVER=inline). Do NOT run npm run auth-server concurrently. Use /env-diagnostic for troubleshooting.');
+  } catch (e) {
+    logger.error('Failed to start inline auth server:', e.message);
+  }
+} else if (authControl === 'true') {
+  logger.warn('Outlook Auth Server disabled (DISABLE_AUTH_SUBSERVER=true)');
+} else {
+  spawnSubserver(3333, path.resolve(__dirname, 'auth', 'outlook-auth-server.js'), 'Outlook Auth Server');
+}
+spawnSubserver(4000, path.resolve(__dirname, 'secure-confirmation-server.js'), 'Secure Confirmation Server');
+
+// Generic onboarding message for ALL MCP clients (no vendor-specific instructions)
 const SECURE_ACTION_PROTOCOL_MESSAGE = `
 SECURE ACTION PROTOCOL FOR OUTLOOK MCP
 
-This server uses confirmation tokens to ensure human approval for sensitive actions like sending emails.
+This server can enforce human approval for sensitive actions (send email, create/delete/move items, rule changes) using either:
+1. Token-based confirmation (default) OR
+2. Browser captcha/code confirmation (if SECURE_CONFIRM_MODE=captcha)
 
-WHEN YOU SEE A CONFIRMATION TOKEN:
+WHEN YOU RECEIVE A SECURE ACTION MESSAGE:
+It will contain: "SECURE ACTION: Human confirmation required".
 
-1. If the server returns a message with "SECURE ACTION: Human confirmation required" and shows a 6-character token (like "A1B2C3"):
-   - DO NOT try to authenticate with this token
-   - DO NOT use the authenticate tool
-   - This is NOT a login token
+TOKEN MODE:
+• Message includes a short code (e.g. A1B2C3)
+• Ask user to provide it, then re-invoke the SAME tool with confirmationToken: "<CODE>".
 
-2. Instead, you should:
-   - Ask the user: "Please confirm this action by typing the security code: [TOKEN]"
-   - Wait for the user to type the token back
-   - Call THE SAME TOOL AGAIN with all original parameters PLUS confirmationToken: "[user's input]"
+CAPTCHA MODE:
+• Message includes a URL like http://localhost:4000/confirm/<actionId>
+• Instruct user to open it in a browser, complete the captcha, and get a success message.
+• After completion, re-invoke the SAME tool with confirmationToken: "<actionId>".
 
-3. Example for send-email:
-   - First call: send-email with to, subject, body
-   - Server responds with token "F91D17"
-   - You ask user: "Please confirm sending this email by typing the security code: F91D17"
-   - User types: "F91D17"
-   - Second call: send-email with to, subject, body, confirmationToken: "F91D17"
-   - Email is sent successfully
-
-IMPORTANT: The confirmationToken parameter is ONLY used when retrying the SAME action after receiving a security token. It's not for authentication - it's for confirming the specific action you just tried.
+NOTES:
+• Codes/actionIds expire quickly—restart if invalid.
+• Never treat codes as authentication credentials.
+• Each confirmation applies only to the original action parameters.
+ • OAuth access tokens (used for Microsoft Graph) are stored separately and are NEVER derived from or interchangeable with these codes/actionIds.
+ • Confirmation codes cannot grant scopes or general API access; they only unlock the single approved action.
 `;
 
-structuredLog('info', `STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
-structuredLog('info', `Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
-structuredLog('info', 'SECURE ACTION PROTOCOL MESSAGE', { onboarding: SECURE_ACTION_PROTOCOL_MESSAGE });
+logger.info(`STARTING ${config.SERVER_NAME.toUpperCase()} MCP SERVER`);
+logger.info(`Test mode is ${config.USE_TEST_MODE ? 'enabled' : 'disabled'}`);
+logger.info('SECURE ACTION PROTOCOL MESSAGE', { onboarding: SECURE_ACTION_PROTOCOL_MESSAGE });
 
-// Combine all tools
-const TOOLS = [
+// Combine and filter tools based on granted scopes
+const allTools = [
   ...authTools,
   ...calendarTools,
   ...emailTools,
   ...folderTools,
-  ...rulesTools
+  ...rulesTools,
+  ...mailboxTools,
+  ...contactsTools
 ];
 
+const grantedScopes = config.AUTH_CONFIG.scopes;
+const TOOLS = allTools.filter(tool => {
+  if (!tool.requiredScopes || tool.requiredScopes.length === 0) {
+    return true; // Always include tools that don't require scopes
+  }
+  const { ok } = config.validateToolScopes(tool.name, tool.requiredScopes, grantedScopes);
+  if (!ok) {
+    logger.warn(`Excluding tool '${tool.name}' due to missing scopes.`);
+  }
+  return ok;
+});
+
 // Debug: Print all registered tool names and count
-structuredLog('debug', 'Registered tools', { tools: TOOLS.map(t => t.name) });
-structuredLog('debug', 'Tool count', { count: TOOLS.length });
+logger.debug('Registered tools', { tools: TOOLS.map(t => t.name) });
+logger.debug('Tool count', { count: TOOLS.length });
 
 // Create server instance
 const server = new Server(
@@ -104,8 +171,8 @@ const server = new Server(
 );
 
 // Register tools/list handler
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  structuredLog('debug', 'Handling tools/list request');
+server.setRequestHandler(ListToolsRequestSchema, () => {
+  logger.debug('Handling tools/list request');
   
   return {
     tools: TOOLS.map(tool => ({
@@ -121,7 +188,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
   const args = request.params.arguments || {};
 
-  structuredLog('debug', `Executing tool: ${toolName}`, { 
+  logger.debug(`Executing tool: ${toolName}`, { 
     args: Object.keys(args).reduce((acc, key) => {
       // Log args but mask sensitive data
       if (key === 'confirmationToken' || key === 'body') {
@@ -151,28 +218,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     /(send|create|delete|update|move|edit)/i.test(toolName);
   
   if (requiresConfirmation) {
-    structuredLog('debug', `Tool ${toolName} requires confirmation`, {
+    logger.debug(`Tool ${toolName} requires confirmation`, {
       hasToken: !!args.confirmationToken,
       secureMode: config.SECURE_PROMPT_MODE
     });
   }
 
   try {
+    // Basic prompt-injection hardening: sanitize all string args except confirmationToken
+    const hardenedArgs = { ...args };
+    Object.keys(hardenedArgs).forEach(key => {
+      const val = hardenedArgs[key];
+      if (key === 'confirmationToken') return; // do not mutate security token
+      if (typeof val === 'string') {
+        if (isSuspicious(val)) {
+          logger.warn('Blocked suspicious argument', { tool: toolName, field: key });
+          return {
+            content: [{
+              type: 'text',
+              text: `Input for field '${key}' appears malicious or prompt-injection oriented and was blocked.`
+            }],
+            isError: true
+          };
+        }
+        // Sanitize benign input
+        hardenedArgs[key] = sanitizeText(val, 2000);
+      }
+    });
+
+    // Runtime scope validation (skip in test mode)
+    if (!config.USE_TEST_MODE && Array.isArray(tool.requiredScopes)) {
+      const { validateToolScopes } = require('./config');
+      const scopeCheck = validateToolScopes(toolName, tool.requiredScopes, config.AUTH_CONFIG.scopes);
+      if (!scopeCheck.ok) {
+        return {
+          content: [{
+            type: 'text',
+            text: `${scopeCheck.message}\nGranted scopes: ${config.AUTH_CONFIG.scopes.join(', ')}`
+          }],
+          isError: true
+        };
+      }
+    }
+
     // Execute the tool handler (it will handle confirmation internally)
-    const result = await tool.handler(args);
+    const result = await tool.handler(hardenedArgs);
 
     // IMPROVED: Add context hint if this is a confirmation request
-    if (result && result.content && result.content[0] && 
-        result.content[0].text && 
+    if (result && result.content && result.content[0] &&
+        result.content[0].text &&
         result.content[0].text.includes('SECURE ACTION: Human confirmation required')) {
-      
-      // Extract the token from the message
       const tokenMatch = result.content[0].text.match(/token to confirm: ([A-Z0-9]{6})/);
       if (tokenMatch) {
-        // Add a clear instruction as a separate message
         result.content.push({
           type: 'text',
-          text: `\n[INSTRUCTION FOR CLAUDE]: Ask the user to type the token ${tokenMatch[1]}, then call ${toolName} again with ALL original parameters PLUS confirmationToken: "${tokenMatch[1]}"`
+          text: `\n[CLIENT ACTION]: Ask user for security code ${tokenMatch[1]} then re-invoke '${toolName}' with original parameters plus confirmationToken: "${tokenMatch[1]}".`
         });
       }
     }
@@ -190,11 +290,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }]
     };
   } catch (error) {
-    structuredLog('error', `Tool execution error: ${error.message}`, { toolName, error: error.stack });
+    logger.error(`Tool execution error: ${error.message}`, { toolName, error: error.stack });
+    // For specific, safe-to-expose errors, we can pass them through
+    if (error.message === 'Authentication required') {
+      return {
+        content: [{
+          type: 'text',
+          text: "Authentication required. Please use the 'authenticate' tool first."
+        }],
+        isError: true
+      };
+    }
     return {
       content: [{
         type: 'text',
-        text: `Error executing tool '${toolName}': ${error.message}`
+        text: `An unexpected error occurred while executing tool '${toolName}'. Please check server logs for details.`
       }],
       isError: true
     };
@@ -202,27 +312,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Register resources/list handler (empty - required by protocol)
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
+server.setRequestHandler(ListResourcesRequestSchema, () => {
   return { resources: [] };
 });
 
 // Register prompts/list handler (empty - required by protocol)
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
+server.setRequestHandler(ListPromptsRequestSchema, () => {
   return { prompts: [] };
 });
 
-structuredLog('debug', 'All request handlers registered');
+logger.debug('All request handlers registered');
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  structuredLog('warn', 'SIGTERM received but staying alive');
+  logger.warn('SIGTERM received but staying alive');
 });
 
 // Start the server
 const transport = new StdioServerTransport();
 server.connect(transport)
-  .then(() => structuredLog('info', `${config.SERVER_NAME} connected and listening`))
+  .then(() => logger.info(`${config.SERVER_NAME} connected and listening`))
   .catch(error => {
-    structuredLog('error', `Connection error: ${error.message}`, { error: error.stack });
+    logger.error(`Connection error: ${error.message}`, { error: error.stack });
     process.exit(1);
   });

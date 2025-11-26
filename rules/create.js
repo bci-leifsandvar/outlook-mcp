@@ -5,6 +5,10 @@ const { callGraphAPI } = require('../utils/graph-api');
 const { ensureAuthenticated } = require('../auth');
 const { getFolderIdByName } = require('../email/folder-utils');
 const { getInboxRules } = require('./list');
+const { isSuspicious } = require('../utils/sanitize');
+const { logSensitiveAction } = require('../utils/sensitive-log');
+const config = require('../config');
+const { handleSecureConfirmation } = require('../utils/secure-confirmation');
 
 /**
  * Create rule handler
@@ -12,9 +16,7 @@ const { getInboxRules } = require('./list');
  * @returns {object} - MCP response
  */
 async function handleCreateRule(args) {
-  const { sanitizeText, isSuspicious } = require('../utils/sanitize');
-  const { logSensitiveAction } = require('../utils/sensitive-log');
-  require('../config').ensureConfigSafe();
+  config.ensureConfigSafe();
   
   const {
     name,
@@ -32,9 +34,7 @@ async function handleCreateRule(args) {
   logSensitiveAction('createRule', args, 'unknown', [name, fromAddresses, containsSubject, moveToFolder].some(isSuspicious));
   
   // Secure prompting mode (from config)
-  const { SECURE_PROMPT_MODE } = require('../config');
-  if (SECURE_PROMPT_MODE) {
-    const { handleSecureConfirmation } = require('../utils/secure-confirmation');
+  if (config.SECURE_PROMPT_MODE) {
     const confirmationResult = await handleSecureConfirmation({
       actionType: 'createRule',
       fields: [name, fromAddresses, containsSubject, moveToFolder],
@@ -89,52 +89,34 @@ async function handleCreateRule(args) {
     };
   }
   
-  try {
-    // Get access token
-    const accessToken = await ensureAuthenticated();
-    
-    // Create rule
-    const result = await createInboxRule(accessToken, {
-      name,
-      fromAddresses,
-      containsSubject,
-      hasAttachments,
-      moveToFolder,
-      markAsRead,
-      isEnabled,
-      sequence
-    });
-    
-    let responseText = result.message;
-    
-    // Add a tip about sequence if it wasn't provided
-    if (!sequence && !result.error) {
-      responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first.";
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: responseText
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Authentication required') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: "Authentication required. Please use the 'authenticate' tool first."
-        }]
-      };
-    }
-    
-    return {
-      content: [{ 
-        type: 'text', 
-        text: `Error creating rule: ${error.message}`
-      }]
-    };
+  // Get access token
+  const accessToken = await ensureAuthenticated();
+  
+  // Create rule
+  const result = await createInboxRule(accessToken, {
+    name,
+    fromAddresses,
+    containsSubject,
+    hasAttachments,
+    moveToFolder,
+    markAsRead,
+    isEnabled,
+    sequence
+  });
+  
+  let responseText = result.message;
+  
+  // Add a tip about sequence if it wasn't provided
+  if (!sequence && !result.error) {
+    responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first.";
   }
+  
+  return {
+    content: [{ 
+      type: 'text', 
+      text: responseText
+    }]
+  };
 }
 
 /**
