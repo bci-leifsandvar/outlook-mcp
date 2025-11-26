@@ -12,6 +12,7 @@ const { getFolderIdByName } = require('../email/folder-utils');
  */
 async function handleMoveEmails(args) {
   const { logSensitiveAction } = require('../utils/sensitive-log');
+  const logger = require('../utils/logger');
   require('../config').ensureConfigSafe();
   const emailIds = args.emailIds || '';
   const targetFolder = args.targetFolder || '';
@@ -71,11 +72,17 @@ async function handleMoveEmails(args) {
       };
     }
     
-    // Move emails
-    const result = await moveEmailsToFolder(accessToken, ids, targetFolder, sourceFolder);
-    const message = result.message && result.message.trim().length > 0 ? result.message : 'Processed move request but no status details were generated.';
+    // Move emails with structured logging
+    logger.info('MoveEmails: starting batch', { count: ids.length, targetFolder });
+    const result = await moveEmailsToFolder(accessToken, ids, targetFolder, sourceFolder, logger);
+    logger.info('MoveEmails: completed batch', { successful: result.results.successful.length, failed: result.results.failed.length });
+    const message = result.message && result.message.trim().length > 0 ? result.message : 'No emails were moved. Verify IDs and folder name.';
+    const summaryJson = JSON.stringify({ targetFolder, successful: result.results.successful, failed: result.results.failed }, null, 2);
     return {
-      content: [{ type: 'text', text: message }]
+      content: [
+        { type: 'text', text: message },
+        { type: 'text', text: `Details:\n${summaryJson}` }
+      ]
     };
   } catch (error) {
     if (error.message === 'Authentication required') {
@@ -104,7 +111,7 @@ async function handleMoveEmails(args) {
  * @param {string} sourceFolderName - Name of the source folder (optional)
  * @returns {Promise<object>} - Result object with status and message
  */
-async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, _sourceFolderName) {
+async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, _sourceFolderName, logger) {
   try {
     // Get the target folder ID
     const targetFolderId = await getFolderIdByName(accessToken, targetFolderName);
@@ -133,10 +140,11 @@ async function moveEmailsToFolder(accessToken, emailIds, targetFolderName, _sour
             destinationId: targetFolderId
           }
         );
-        
+        if (logger) logger.debug('MoveEmails: moved', { emailId, targetFolderId });
         results.successful.push(emailId);
       } catch (error) {
         console.error(`Error moving email ${emailId}: ${error.message}`);
+        if (logger) logger.warn('MoveEmails: failed', { emailId, error: error.message });
         results.failed.push({
           id: emailId,
           error: error.message

@@ -10,8 +10,13 @@ async function handleListContacts(args = {}) {
     if (contacts.length === 0) {
       return { content: [{ type: 'text', text: 'No contacts found.' }] };
     }
-    const lines = contacts.map(c => `• ${c.displayName || 'Unnamed'} (${(c.emailAddresses && c.emailAddresses[0] && c.emailAddresses[0].address) || 'no-email'})`);
-    return { content: [{ type: 'text', text: `Found ${contacts.length} contacts:\n${lines.join('\n')}` }] };
+    const lines = contacts.map(c => {
+      const email = (c.emailAddresses && c.emailAddresses[0] && c.emailAddresses[0].address) || 'no-email';
+      const name = c.displayName || 'Unnamed';
+      const id = c.id || 'NO_ID';
+      return `• ${name} <${email}> | id: ${id}`;
+    });
+    return { content: [{ type: 'text', text: `Found ${contacts.length} contacts:\n\n${lines.join('\n')}` }] };
   } catch (e) {
     if (e.message === 'Authentication required') {
       return { content: [{ type: 'text', text: "Authentication required. Please use the 'authenticate' tool first." }], isError: true };
