@@ -1,6 +1,6 @@
 {
   "name": "outlook-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for Claude to access Outlook data via Microsoft Graph API",
   "main": "index.js",
   "scripts": {

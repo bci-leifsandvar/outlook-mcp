@@ -13,15 +13,15 @@ This repository is a fork. Any certifications, badges, or compliance claims from
 **Token Encryption at Rest:**
 - All tokens are encrypted using AES-256-GCM before being saved to disk. The encryption key must be set via the `MCP_TOKEN_KEY` environment variable (64 hex characters).
 
-**PII Masking in Logs:**
-- Sensitive action logs automatically mask or redact PII (such as email addresses and simple names) before writing to disk. See `utils/sanitize.js` for masking logic.
+**PII Masking in Logs (not in outputs):**
+- Tool responses to the model return raw data by default. PII masking is applied only in logs. You can opt-in masking in tool outputs via `mask:true` on supported tools (e.g., `email/read`, `email/list`).
 
 **Suspicious Event Detection & Logging:**
 - Sensitive actions (send, create, delete, move, rule create) are monitored for prompt injection and abuse patterns. The following are considered suspicious:
-  - Inputs containing `user:`, `assistant:`, code block markers (```), triple hash (`###`), double newlines, or `<script>` tags
+  - Inputs containing `user:`, `assistant:`, code block markers (```), triple hash (`###`), or `<script>` tags
   - Any pattern listed in `utils/sanitize.js` SUSPICIOUS_PATTERNS
 - If a suspicious pattern is detected:
-  - The action is blocked (if in a confirmation prompt)
+  - The action is still prompted for human confirmation (no hard block), unless configuration explicitly disables confirmation
   - The attempt is logged in `~/outlook-mcp-sensitive-actions.log` (with PII masked)
   - Repeated suspicious attempts (3+ in 10 minutes) trigger an alert entry in the log
 
@@ -229,8 +229,8 @@ To configure server behavior, you can edit `config.js` to change:
 3. **Start Authentication Server**: Open a terminal and run `npm run auth-server`
 4. **Authenticate**: In Claude Desktop, use the `authenticate` tool to get an OAuth URL
 
-**Confirmation Prompts:**
-For sensitive actions (such as sending email), you may be prompted to confirm before the action is completed. If you see a message asking "Reply with confirm=true to proceed," reply with `confirm=true` in your next tool call to continue.
+**Confirmation Prompts (Secure Confirmation):**
+Sensitive actions route through a secure confirmation step. The confirmation page shows a truncated JSON payload of the pending action and a confirmation code. Provide the token/actionId to proceed. This avoids blocking while ensuring human oversight.
 5. **Complete OAuth Flow**: Visit the URL in your browser and sign in with Microsoft
 6. **Start Using**: Once authenticated, you can use all the Outlook tools in Claude!
 

@@ -1,3 +1,15 @@
+## [1.1.0] - 2025-11-25
+- Secure confirmation: simplified JSON preview, improved styling, removed copy button
+- Confirmation flow now prompts instead of blocking; suspicious input no longer hard-blocks
+- Email tools: removed PII masking from outputs; added optional `mask:true` flag
+- List emails: shows real sender, subject, IDs; diagnostics retained
+- Move emails: unified secure confirmation, structured logging, non-empty summary output
+- Contacts list: includes contact IDs for update/delete usability
+- Calendar decline: clearer organizer error guidance, preflight detection
+- Rules list: robust error handling with hints; includes rule IDs
+- Sanitization: fixed false-positive double newline check
+- Misc: UI polish, minor documentation updates
+
 ## [Unreleased]
 - Tokens are now encrypted at rest using AES-256-GCM; key set via MCP_TOKEN_KEY
 - Sensitive action logs now mask/redact PII (emails, names) before writing
